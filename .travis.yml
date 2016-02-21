@@ -11,7 +11,7 @@ rust: stable
 
 before_install:
 - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
-- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get install -y gcc-multilib g++-multilib libssl-dev:i386; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get install -y gcc-multilib g++-multilib libssl-dev libssl-dev:i386; fi
 
 before_script:
 - if [[ $TRAVIS_OS_NAME == "osx"   ]]; then curl -O https://static.rust-lang.org/dist/rust-std-1.6.0-i686-apple-darwin.tar.gz; fi
