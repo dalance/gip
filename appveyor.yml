@@ -12,14 +12,18 @@ environment:
           RUST_VERSION: 1.6.0
           ARCH: i686
           OPENSSL_ARCH: Win32
-          OPENSSL_LIB_DIR: C:\OpenSSL-Win32\lib
+          OPENSSL_LIB_DIR: C:\OpenSSL-Win32\lib\VC
+          OPENSSL_LIBS: ssleay32MT:libeay32MT
           OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win32\include
+          DEP_OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win32\include
         - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
           RUST_VERSION: 1.6.0
           ARCH: x86_64
           OPENSSL_ARCH: Win64
-          OPENSSL_LIB_DIR: C:\OpenSSL-Win64\lib
+          OPENSSL_LIB_DIR: C:\OpenSSL-Win64\lib\VC
+          OPENSSL_LIBS: ssleay32MT:libeay32MT
           OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win64\include
+          DEP_OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win64\include
 
 install:
     - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:RUST_INSTALL_TRIPLE}.exe"
