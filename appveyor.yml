@@ -38,9 +38,6 @@ build_script:
 after_build:
     - cmd: 7z a gip-%APPVEYOR_REPO_TAG_NAME%-%ARCH%-win.zip %APPVEYOR_BUILD_FOLDER%\target\%RUST_INSTALL_TRIPLE%\release\gip.exe
 
-test_script:
-    - cmd: cargo test
-
 artifacts:
     - path: gip*.zip
       name: gip
