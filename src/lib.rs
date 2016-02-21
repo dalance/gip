@@ -45,6 +45,7 @@ impl GlobalAddress {
 pub trait Provider {
     fn name( &self ) -> String;
     fn get ( &mut self ) -> GlobalAddress;
+    fn set_timeout( &mut self, timeout: usize );
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -206,6 +207,12 @@ impl Provider for ProviderAny {
     fn name( &self ) -> String {
         String::from( "any" )
     }
+
+    fn set_timeout( &mut self, timeout: usize ) {
+        for p in &mut self.providers {
+            p.set_timeout( timeout )
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -273,6 +280,10 @@ impl Provider for ProviderPlane {
 
     fn name( &self ) -> String {
         self.name.clone()
+    }
+
+    fn set_timeout( &mut self, timeout: usize ) {
+        self.timeout = timeout
     }
 }
 
@@ -356,6 +367,10 @@ impl Provider for ProviderJson {
 
     fn name( &self ) -> String {
         self.name.clone()
+    }
+
+    fn set_timeout( &mut self, timeout: usize ) {
+        self.timeout = timeout
     }
 }
 

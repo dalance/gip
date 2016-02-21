@@ -23,7 +23,7 @@ Options:
     -s --string       Show by plane text without line break
     -j --json         Show by JSON
 
-    --timeout <ms>    timeout by milliseconds [default: 1000]
+    --timeout <ms>    timeout per each provider by milliseconds [default: 1000]
     --json-key <key>  Key string of JSON format [default: ip]
 
     -l --list         Show provider list
