@@ -25,7 +25,7 @@ install:
     - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:RUST_INSTALL_TRIPLE}.exe"
     - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /DIR="%RUST_INSTALL_DIR%"
     - cmd: SET PATH=%PATH%;%RUST_INSTALL_DIR%\bin
-    - ps: Start-FileDownload 'http://slproweb.com/download/${env:OPENSSL_ARCH}OpenSSL-1_0_2f.exe'
+    - ps: Start-FileDownload "http://slproweb.com/download/${env:OPENSSL_ARCH}OpenSSL-1_0_2f.exe"
     - ps: Start-Process "${env:OPENSSL_ARCH}OpenSSL-1_0_2f.exe" -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
 
 build_script:
