@@ -1,0 +1,38 @@
+language: rust
+
+os:
+- linux
+- osx
+
+rust: stable
+
+before_install:
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
+
+before_script:
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then curl -O https://static.rust-lang.org/dist/rust-std-1.6.0-i686-apple-darwin.tar.gz; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then tar xf rust-std-1.6.0-i686-apple-darwin.tar.gz; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then mv rust-std-1.6.0-i686-apple-darwin/rust-std-i686-apple-darwin/lib/rustlib/i686-apple-darwin ~/rust/lib/rustlib/; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then curl -O https://static.rust-lang.org/dist/rust-std-1.6.0-i686-unknown-linux-gnu.tar.gz; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then tar xf rust-std-1.6.0-i686-unknown-linux-gnu.tar.gz; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then mv rust-std-1.6.0-i686-unknown-linux-gnu/rust-std-i686-unknown-linux-gnu/lib/rustlib/i686-unknown-linux-gnu ~/rust/lib/rustlib/; fi
+
+script:
+- make test
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then make release_osx32; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then make release_osx64; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then make release_lnx32; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then make release_lnx64; fi
+
+deploy:
+  provider: releases
+  api_key:
+    secure: OYFSyoPf6gAXGZoHs/lAAgyZHHwOhmtlzPGAnuFRJuRPTMvt3ck5DkH6+KtNOjdlM8mmF7gdXJyVJeQcbBufemJaMs1PsApu49e4sQQhv57P07+w5WOL9KVl5avZyXslMsdNGb7VmAhYgAbErC2VAvKakEL5y/PO/St5HwN/1130qn9Hbvd5XZKceEQBBKZ/rZehtI+4FKy2OvDOL3R8RpV7b+XgSCor9Zz4mtkdKv5yteuggRK6b8WPQukkCs2rHyK4rashjP4MeqIwYSUu13sDBXij4MQ3rM6cc5+Spk5lxzmwvjUir8O0rrIg2Sd6J4m9aHgjBk1i/BH6MDRXAlqSqhgiU2plPGN9VUy1Nvr0yd7A28Zv3tcAwlDaYaEIXEN1O/YK4IKgj/IWpEtHznQ4afbVvKCmmsE1GdfnHuj4v4E5yn76SwZCZvXE+ouU1n/UtxN9zpiPgzhECq+2kIcAS6xqdgrZGP/ujzqWVuUYvAtwDcDBGFa7JR+d4mYbGBmXjitX+Mm1sRQPQL6XgPxRdkQMqVdqZXCQp8xtL9Lg1Dh+IfbByK5popDxwHlddjaaDMCzdTQ85aW0mjnm5JFRlQZdlE2mP7EWHypG+SRgB3//MgabmFSH2Fs231vnsjADktE6s+6eJp83WNQCWdwi2S6VbcNkeVpf/86Rj7Y=
+  file:
+    - gip-*.zip
+  file_glob: true
+  skip_cleanup: true
+  on:
+    repo: dalance/gip
+    tags: true

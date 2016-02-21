@@ -1,5 +1,8 @@
 # gip
 
+[![Build Status](https://travis-ci.org/dalance/gip.svg?branch=master)](https://travis-ci.org/dalance/gip)
+[![Build status](https://ci.appveyor.com/api/projects/status/ffqn56t1w5v9cihy?svg=true)](https://ci.appveyor.com/project/dalance/gip)
+
 **gip** is a command-line tool to get global IP address.
 
 ## Install

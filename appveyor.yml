@@ -1,0 +1,43 @@
+branches:
+    except:
+        - gh-pages
+
+platform:
+    - x64
+
+environment:
+    RUST_INSTALL_DIR: C:\Rust
+    matrix:
+        - RUST_INSTALL_TRIPLE: i686-pc-windows-msvc
+          RUST_VERSION: 1.6.0
+          ARCH: i686
+        - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
+          RUST_VERSION: 1.6.0
+          ARCH: x86_64
+
+install:
+    - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:RUST_INSTALL_TRIPLE}.exe"
+    - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /DIR="%RUST_INSTALL_DIR%"
+    - cmd: SET PATH=%PATH%;%RUST_INSTALL_DIR%\bin
+
+build_script:
+    - cmd: cargo build --release --target=%RUST_INSTALL_TRIPLE%
+
+after_build:
+    - cmd: 7z a gip-%APPVEYOR_REPO_TAG_NAME%-%ARCH%-win.zip %APPVEYOR_BUILD_FOLDER%\target\%RUST_INSTALL_TRIPLE%\release\gip.exe
+
+test_script:
+    - cmd: cargo test
+
+artifacts:
+    - path: gip*.zip
+      name: gip
+
+deploy:
+    provider: GitHub
+    auth_token:
+        secure: YwL0NwyM+vym8U4Gxc8hbOEZ4+MHe6gMzTc9FebvvIoB3VLGSs7t4JtXQxiJixl9
+    artifact: /.*\.zip/
+    on:
+        branch: /v\d+\.\d+\.\d+/
+        appveyor_repo_tag: true
