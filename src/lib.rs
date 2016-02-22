@@ -23,17 +23,20 @@ use toml::{Parser, Table, Value};
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub struct GlobalAddress {
+    /// Time of checking address
     pub time: Tm,
+    /// Global IP address by IPv4
     pub addr: Option<Ipv4Addr>,
-    pub url : String,
+    /// Provider name used for checking address
+    pub provider: String,
 }
 
 impl GlobalAddress {
     pub fn new() -> Self {
         GlobalAddress {
-            time: time::now(),
-            addr: None,
-            url : String::new(),
+            time    : time::now(),
+            addr    : None,
+            provider: String::new(),
         }
     }
 }
@@ -43,8 +46,11 @@ impl GlobalAddress {
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub trait Provider {
-    fn name( &self ) -> String;
-    fn get ( &mut self ) -> GlobalAddress;
+    /// Get global IP address
+    fn get_addr   ( &mut self ) -> GlobalAddress;
+    /// Get provider name
+    fn get_name   ( &self ) -> String;
+    /// Set timeout by milliseconds
     fn set_timeout( &mut self, timeout: usize );
 }
 
@@ -52,17 +58,25 @@ pub trait Provider {
 // ProviderInfo
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Format of return value from provider
 #[derive(Debug)]
 pub enum ProviderType {
+    /// Plane text format
     Plane,
+    /// JSON format
     Json ,
 }
 
 pub struct ProviderInfo {
+    /// Provider name
     pub name   : String      ,
+    /// Provider format
     pub ptype  : ProviderType,
+    /// Timeout
     pub timeout: usize       ,
+    /// URL for GET
     pub url    : String      ,
+    /// Key for JSON format
     pub key    : Vec<String> ,
 }
 
@@ -77,6 +91,7 @@ impl ProviderInfo {
         }
     }
 
+    /// Load provider info from TOML string
     pub fn from_toml( s: &str ) -> Vec<ProviderInfo> {
         let mut ret = Vec::new();
         let mut parser = Parser::new( s );
@@ -108,6 +123,7 @@ impl ProviderInfo {
         ret
     }
 
+    /// Create `Provider` from this info
     pub fn create( &self ) -> Box<Provider> {
         match self.ptype {
             ProviderType::Plane => {
@@ -166,7 +182,9 @@ impl ProviderInfo {
 // ProviderAny
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Provider for checking global address from multiple providers
 pub struct ProviderAny {
+    /// Providers for checking global address
     pub providers: Vec<Box<Provider>>,
 }
 
@@ -177,6 +195,7 @@ impl ProviderAny {
         }
     }
 
+    /// Load providers from TOML string
     pub fn from_toml( s: &str  ) -> Self {
         let infos = ProviderInfo::from_toml( s );
         let mut p = Vec::new();
@@ -191,12 +210,12 @@ impl ProviderAny {
 }
 
 impl Provider for ProviderAny {
-    fn get( &mut self ) -> GlobalAddress {
+    fn get_addr( &mut self ) -> GlobalAddress {
         let mut rng = thread_rng();
         rng.shuffle( &mut self.providers );
 
         for p in &mut self.providers {
-            let ret = p.get();
+            let ret = p.get_addr();
             if ret.addr.is_some() {
                 return ret
             }
@@ -204,7 +223,7 @@ impl Provider for ProviderAny {
         return GlobalAddress::new();
     }
 
-    fn name( &self ) -> String {
+    fn get_name( &self ) -> String {
         String::from( "any" )
     }
 
@@ -219,9 +238,22 @@ impl Provider for ProviderAny {
 // ProviderPlane
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Provider for checking global address by plane text format.
+///
+/// # Examples
+/// ```
+/// use gip::{Provider, ProviderPlane};
+/// let mut p = ProviderPlane::new();
+/// p.url = String::from( "http://inet-ip.info/ip" );
+/// let addr = p.get_addr();
+/// println!( "{:?}", addr.addr );
+/// ```
 pub struct ProviderPlane {
+    /// Provider name
     pub name   : String,
+    /// URL for GET
     pub url    : String,
+    /// Timeout
     pub timeout: usize ,
 }
 
@@ -236,10 +268,11 @@ impl ProviderPlane {
 }
 
 impl Provider for ProviderPlane {
-    fn get( &mut self ) -> GlobalAddress {
+    fn get_addr( &mut self ) -> GlobalAddress {
         let ( tx, rx ) = mpsc::channel();
 
-        let url = self.url.clone();
+        let name = self.name.clone();
+        let url  = self.url.clone();
         thread::spawn( move || {
             let client = Client::new();
             let res = client.get( &url ).header( Connection::close() ).send();
@@ -256,9 +289,9 @@ impl Provider for ProviderPlane {
             };
 
             let ret = GlobalAddress {
-                time: time::now(),
-                addr: addr,
-                url : url,
+                time    : time::now(),
+                addr    : addr,
+                provider: name,
             };
             let _ = tx.send( ret );
         } );
@@ -278,7 +311,7 @@ impl Provider for ProviderPlane {
         }
     }
 
-    fn name( &self ) -> String {
+    fn get_name( &self ) -> String {
         self.name.clone()
     }
 
@@ -291,10 +324,25 @@ impl Provider for ProviderPlane {
 // ProviderJson
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Provider for checking global address by JSON format.
+///
+/// # Examples
+/// ```
+/// use gip::{Provider, ProviderJson};
+/// let mut p = ProviderJson::new();
+/// p.url = String::from( "http://httpbin.org/ip" );
+/// p.key = vec!["origin".to_string()];
+/// let addr = p.get_addr();
+/// println!( "{:?}", addr.addr );
+/// ```
 pub struct ProviderJson {
+    /// Provider name
     pub name   : String,
+    /// URL for GET
     pub url    : String,
+    /// Key for JSON format
     pub key    : Vec<String>,
+    /// Timeout
     pub timeout: usize ,
 }
 
@@ -310,11 +358,12 @@ impl ProviderJson {
 }
 
 impl Provider for ProviderJson {
-    fn get( &mut self ) -> GlobalAddress {
+    fn get_addr( &mut self ) -> GlobalAddress {
         let ( tx, rx ) = mpsc::channel();
 
-        let url = self.url.clone();
-        let key = self.key.clone();
+        let name = self.name.clone();
+        let url  = self.url.clone();
+        let key  = self.key.clone();
         thread::spawn( move || {
             let client = Client::new();
             let res = client.get( &url ).header( Connection::close() ).send();
@@ -343,9 +392,9 @@ impl Provider for ProviderJson {
             };
 
             let ret = GlobalAddress {
-                time: time::now(),
-                addr: addr,
-                url : url,
+                time    : time::now(),
+                addr    : addr,
+                provider: name,
             };
             let _ = tx.send( ret );
         } );
@@ -365,7 +414,7 @@ impl Provider for ProviderJson {
         }
     }
 
-    fn name( &self ) -> String {
+    fn get_name( &self ) -> String {
         self.name.clone()
     }
 
@@ -419,7 +468,7 @@ mod tests {
     fn inet_ip() {
         let mut p = ProviderPlane::new();
         p.url = String::from( "http://inet-ip.info/ip" );
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -428,7 +477,7 @@ mod tests {
         let mut p = ProviderJson::new();
         p.url = String::from( "http://httpbin.org/ip" );
         p.key = vec!["origin".to_string()];
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -437,7 +486,7 @@ mod tests {
         let mut p = ProviderJson::new();
         p.url = String::from( "http://myexternalip/raw" );
         p.key = vec!["origin".to_string()];
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -445,7 +494,7 @@ mod tests {
     fn ipify() {
         let mut p = ProviderPlane::new();
         p.url = String::from( "https://api.ipify.org" );
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -453,7 +502,7 @@ mod tests {
     fn globalip() {
         let mut p = ProviderPlane::new();
         p.url = String::from( "http://globalip.me?ip" );
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -467,7 +516,7 @@ mod tests {
         info.key     = vec!["origin".to_string()];
 
         let mut p = info.create();
-        let addr = p.get();
+        let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }
 
@@ -479,7 +528,7 @@ mod tests {
     #[test]
     fn provider_any() {
         let mut p0 = ProviderAny::from_toml( &DEFAULT_TOML );
-        let addr = p0.get();
+        let addr = p0.get_addr();
         println!( "{:?}", addr.addr );
     }
 }

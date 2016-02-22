@@ -118,12 +118,12 @@ fn main() {
 
     if args.flag_list {
         for p in &client.providers {
-            println!( "{}", p.name() );
+            println!( "{}", p.get_name() );
         }
         return
     }
 
-    let addr = client.get();
+    let addr = client.get_addr();
     let addr_str = match addr.addr {
         Some( x ) => format!( "{:?}", x ),
         None      => format!( "Failed" ),
@@ -131,7 +131,7 @@ fn main() {
 
     if args.flag_verbose {
         println!( "IP Address: {}", addr_str  );
-        println!( "Provider  : {}", addr.url  );
+        println!( "Provider  : {}", addr.provider );
         println!( "Check Time: {}", addr.time.rfc822() );
     } else {
         if args.flag_string {

@@ -5,9 +5,12 @@ GIT_REVISION = $(shell git log -1 --format="%h")
 export BUILD_TIME
 export GIT_REVISION
 
-.PHONY: all test clean release_lnx32 release_lnx64 release_osx32 release_osx64
+.PHONY: all doc test clean release_lnx32 release_lnx64 release_osx32 release_osx64
 
 all: test
+
+doc:
+	cargo doc --no-deps
 
 test:
 	cargo test -- --nocapture

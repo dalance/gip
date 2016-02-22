@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/dalance/gip.svg?branch=master)](https://travis-ci.org/dalance/gip)
 [![Build status](https://ci.appveyor.com/api/projects/status/ffqn56t1w5v9cihy?svg=true)](https://ci.appveyor.com/project/dalance/gip)
 
-**gip** is a command-line tool to get global IP address.
+**gip** is a command-line tool and Rust library to check global IP address.
 
 ## Install
 Download from [release page](https://github.com/dalance/gip/releases/latest), and extract to the directory in PATH.
@@ -42,3 +42,13 @@ If you want to change providers, providers can be set by `$HOME/.gip.toml` like 
     url     = "http://httpbin.org/ip"
     key     = ["origin"]
 ```
+
+## Library
+
+**gip** is provided as Rust library.
+
+```Cargo.toml
+gip = "*"
+```
+
+[Documentation](http://dalance.github.io/gip/gip/)
