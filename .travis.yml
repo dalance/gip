@@ -19,11 +19,10 @@ before_install:
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
 
 before_script:
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-unknown-linux-gnu; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-unknown-linux-gnu; fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-apple-darwin; fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-apple-darwin; fi
-- export PATH=~/.cargo/bin:$PATH
+- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain i686-unknown-linux-gnu; fi
+- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain x86_64-unknown-linux-gnu; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain i686-apple-darwin; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain x86_64-apple-darwin; fi
 - which cargo
 - which rustc
 - cargo --version
