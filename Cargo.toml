@@ -8,10 +8,6 @@ readme = "README.md"
 description = "A library and command-line frontend to check global IP address"
 documentation = "http://dalance.github.io/gip/gip"
 
-[[bin]]
-name = "gip"
-path = "src/bin/main.rs"
-
 [dependencies]
 docopt          = "0.6.78"
 hyper           = "0.7.2"
