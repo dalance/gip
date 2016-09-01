@@ -29,6 +29,9 @@ before_script:
 - which rustc
 - cargo --version
 - rustc --version
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then wget http://www.openssl.org/source/openssl-1.0.1i.tar.gz; tar xzf openssl-1.0.1i.tar.gz; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then ./openssl-1.0.1i/Configure mingw shared zlib-dynamic; make -C openssl-1.0.1i && make -C openssl-1.0.1i install; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then cp /usr/local/ssl/bin/*.dll /usr/bin; fi
 
 script:
 - if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then make test; fi
