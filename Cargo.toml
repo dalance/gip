@@ -10,7 +10,7 @@ documentation = "http://dalance.github.io/gip/gip"
 
 [[bin]]
 name = "gip"
-path = "src/bin/main.rs"
+path = "src/bin/gip.rs"
 
 [dependencies]
 docopt          = "0.6.78"
