@@ -14,8 +14,11 @@ path = "src/bin/main.rs"
 
 [dependencies]
 docopt          = "0.6.78"
-hyper           = "0.7.2"
 rand            = "0.3.14"
 rustc-serialize = "0.3.18"
 time            = "0.1.34"
 toml            = "0.1.27"
+
+[dependencies.hyper]
+version  = "0.7.2"
+default-features = false
