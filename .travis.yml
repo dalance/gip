@@ -1,6 +1,8 @@
 sudo: required
 dis: trusty
 
+language: rust
+
 os:
 - linux
 - osx
@@ -9,16 +11,18 @@ env:
 - ARCH=i686
 - ARCH=x86_64
 
+rust: stable
+
 before_install:
 - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then sudo apt-get install -y gcc-multilib g++-multilib libssl-dev:i386; fi
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
 
 before_script:
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-unknown-linux-gnu fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-unknown-linux-gnu fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-apple-darwin fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-apple-darwin fi
+- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-unknown-linux-gnu; fi
+- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-unknown-linux-gnu; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain i686-apple-darwin; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain x86_64-apple-darwin; fi
 - export PATH=~/.cargo/bin:$PATH
 - which cargo
 - which rustc
