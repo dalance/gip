@@ -52,6 +52,8 @@ pub trait Provider {
     fn get_name   ( &self ) -> String;
     /// Set timeout by milliseconds
     fn set_timeout( &mut self, timeout: usize );
+    /// Set proxy
+    fn set_proxy( &mut self, host: &str, port: u16 );
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -232,6 +234,12 @@ impl Provider for ProviderAny {
             p.set_timeout( timeout )
         }
     }
+
+    fn set_proxy( &mut self, host: &str, port: u16 ) {
+        for p in &mut self.providers {
+            p.set_proxy( host, port )
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -255,6 +263,8 @@ pub struct ProviderPlane {
     pub url    : String,
     /// Timeout
     pub timeout: usize ,
+    /// Proxy
+    pub proxy  : Option<(String, u16)>,
 }
 
 impl ProviderPlane {
@@ -263,6 +273,7 @@ impl ProviderPlane {
             name   : String::new(),
             url    : String::new(),
             timeout: 1000,
+            proxy  : None,
         }
     }
 }
@@ -271,10 +282,14 @@ impl Provider for ProviderPlane {
     fn get_addr( &mut self ) -> GlobalAddress {
         let ( tx, rx ) = mpsc::channel();
 
-        let name = self.name.clone();
-        let url  = self.url.clone();
+        let name  = self.name.clone();
+        let url   = self.url.clone();
+        let proxy = self.proxy.clone();
         thread::spawn( move || {
-            let client = Client::new();
+            let client = match proxy {
+                Some( ( x, y ) ) => Client::with_http_proxy( x, y ),
+                None             => Client::new(),
+            };
             let res = client.get( &url ).header( Connection::close() ).send();
 
             let mut body = String::new();
@@ -318,6 +333,10 @@ impl Provider for ProviderPlane {
     fn set_timeout( &mut self, timeout: usize ) {
         self.timeout = timeout
     }
+
+    fn set_proxy( &mut self, host: &str, port: u16 ) {
+        self.proxy = Some( ( String::from( host ), port ) )
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -344,6 +363,8 @@ pub struct ProviderJson {
     pub key    : Vec<String>,
     /// Timeout
     pub timeout: usize ,
+    /// Proxy
+    pub proxy  : Option<(String, u16)>,
 }
 
 impl ProviderJson {
@@ -353,6 +374,7 @@ impl ProviderJson {
             url    : String::new(),
             key    : Vec::new(),
             timeout: 1000,
+            proxy  : None,
         }
     }
 }
@@ -361,11 +383,15 @@ impl Provider for ProviderJson {
     fn get_addr( &mut self ) -> GlobalAddress {
         let ( tx, rx ) = mpsc::channel();
 
-        let name = self.name.clone();
-        let url  = self.url.clone();
-        let key  = self.key.clone();
+        let name  = self.name.clone();
+        let url   = self.url.clone();
+        let key   = self.key.clone();
+        let proxy = self.proxy.clone();
         thread::spawn( move || {
-            let client = Client::new();
+            let client = match proxy {
+                Some( ( x, y ) ) => Client::with_http_proxy( x, y ),
+                None             => Client::new(),
+            };
             let res = client.get( &url ).header( Connection::close() ).send();
 
             let mut body = String::new();
@@ -420,6 +446,10 @@ impl Provider for ProviderJson {
 
     fn set_timeout( &mut self, timeout: usize ) {
         self.timeout = timeout
+    }
+
+    fn set_proxy( &mut self, host: &str, port: u16 ) {
+        self.proxy = Some( ( String::from( host ), port ) )
     }
 }
 

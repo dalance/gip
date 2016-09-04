@@ -19,17 +19,18 @@ Usage:
     gip [options]
 
 Options:
-    -p --plane        Show by plane text ( default )
-    -s --string       Show by plane text without line break
-    -j --json         Show by JSON
+    -p --plane           Show by plane text ( default )
+    -s --string          Show by plane text without line break
+    -j --json            Show by JSON
 
-    --timeout <ms>    timeout per each provider by milliseconds [default: 1000]
-    --json-key <key>  Key string of JSON format [default: ip]
+    --timeout <ms>       timeout per each provider by milliseconds [default: 1000]
+    --json-key <key>     Key string of JSON format [default: ip]
+    --proxy <host:port>  proxy for HTTP access [default: ]
 
-    -l --list         Show provider list
-    -h --help         Show this message
-    -V --verbose      Show verbose message
-    -v --version      Show version
+    -l --list            Show provider list
+    -h --help            Show this message
+    -V --verbose         Show verbose message
+    -v --version         Show version
 ";
 
 static DEFAULT_TOML: &'static str = r#"
@@ -76,6 +77,7 @@ struct Args {
     flag_json    : bool ,
     flag_timeout : usize,
     flag_json_key: String,
+    flag_proxy   : String,
     flag_list    : bool ,
     flag_verbose : bool ,
 }
@@ -121,6 +123,18 @@ fn main() {
             println!( "{}", p.get_name() );
         }
         return
+    }
+
+    client.set_timeout( args.flag_timeout );
+
+    if args.flag_proxy != "" {
+        let proxy_str = args.flag_proxy;
+        let ( host, port ) = proxy_str.split_at( proxy_str.find( ':' ).unwrap_or( 0 ) );
+        let port = port.trim_matches( ':' ).parse::<u16>();
+        match port {
+            Ok ( p ) => client.set_proxy( host, p ),
+            Err( _ ) => println!( "Proxy format error: {} ( must be \"host:port\" format )", proxy_str ),
+        }
     }
 
     let addr = client.get_addr();
