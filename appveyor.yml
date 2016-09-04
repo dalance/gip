@@ -6,37 +6,23 @@ platform:
     - x64
 
 environment:
-    RUST_INSTALL_DIR: C:\Rust
     matrix:
-        - RUST_INSTALL_TRIPLE: i686-pc-windows-msvc
-          RUST_VERSION: 1.6.0
+        - TARGET: i686-pc-windows-msvc
           ARCH: i686
-          OPENSSL_ARCH: Win32
-          OPENSSL_LIB_DIR: C:\OpenSSL-Win32\lib\VC
-          OPENSSL_LIBS: ssleay32MT:libeay32MT
-          OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win32\include
-          DEP_OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win32\include
-        - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
-          RUST_VERSION: 1.6.0
+        - TARGET: x86_64-pc-windows-msvc
           ARCH: x86_64
-          OPENSSL_ARCH: Win64
-          OPENSSL_LIB_DIR: C:\OpenSSL-Win64\lib\VC
-          OPENSSL_LIBS: ssleay32MT:libeay32MT
-          OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win64\include
-          DEP_OPENSSL_INCLUDE_DIR: C:\OpenSSL-Win64\include
 
 install:
-    - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:RUST_INSTALL_TRIPLE}.exe"
-    - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /DIR="%RUST_INSTALL_DIR%"
-    - cmd: SET PATH=%PATH%;%RUST_INSTALL_DIR%\bin
-    - ps: Start-FileDownload "http://slproweb.com/download/${env:OPENSSL_ARCH}OpenSSL-1_0_2f.exe"
-    - ps: Start-Process "${env:OPENSSL_ARCH}OpenSSL-1_0_2f.exe" -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
+    - curl -sSf -o rustup-init.exe https://win.rustup.rs
+    - rustup-init.exe -y
+    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    - if NOT "%TARGET%" == "x86_64-pc-windows-msvc" rustup target add %TARGET%
 
 build_script:
-    - cmd: cargo build --release --target=%RUST_INSTALL_TRIPLE%
+    - cmd: cargo build --release --target=%TARGET%
 
 after_build:
-    - cmd: 7z a gip-%APPVEYOR_REPO_TAG_NAME%-%ARCH%-win.zip %APPVEYOR_BUILD_FOLDER%\target\%RUST_INSTALL_TRIPLE%\release\gip.exe
+    - cmd: 7z a gip-%APPVEYOR_REPO_TAG_NAME%-%ARCH%-win.zip %APPVEYOR_BUILD_FOLDER%\target\%TARGET%\release\gip.exe
 
 artifacts:
     - path: gip*.zip

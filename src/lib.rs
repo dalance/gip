@@ -454,7 +454,7 @@ mod tests {
             name    = "ipify.org"
             ptype   = "Plane"
             timeout = 1000
-            url     = "https://api.ipify.org"
+            url     = "http://api.ipify.org"
 
         [[providers]]
             name    = "httpbin.org"
@@ -493,7 +493,7 @@ mod tests {
     #[test]
     fn ipify() {
         let mut p = ProviderPlane::new();
-        p.url = String::from( "https://api.ipify.org" );
+        p.url = String::from( "http://api.ipify.org" );
         let addr = p.get_addr();
         println!( "{:?}", addr.addr );
     }

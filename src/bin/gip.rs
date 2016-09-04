@@ -55,7 +55,7 @@ static DEFAULT_TOML: &'static str = r#"
         name    = "ipify.org"
         ptype   = "Plane"
         timeout = 1000
-        url     = "https://api.ipify.org"
+        url     = "http://api.ipify.org"
 
     [[providers]]
         name    = "httpbin.org"

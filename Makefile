@@ -23,8 +23,8 @@ release_lnx32:
 	zip -j gip-v${VERSION}-i686-lnx.zip target/i686-unknown-linux-gnu/release/gip
 
 release_lnx64:
-	cargo build --release --target=x86_64-unknown-linux-gnu
-	zip -j gip-v${VERSION}-x86_64-lnx.zip target/x86_64-unknown-linux-gnu/release/gip
+	cargo build --release --target=x86_64-unknown-linux-musl
+	zip -j gip-v${VERSION}-x86_64-lnx.zip target/x86_64-unknown-linux-musl/release/gip
 
 release_osx32:
 	cargo build --release --target=i686-apple-darwin
@@ -33,12 +33,3 @@ release_osx32:
 release_osx64:
 	cargo build --release --target=x86_64-apple-darwin
 	zip -j gip-v${VERSION}-x86_64-osx.zip target/x86_64-apple-darwin/release/gip
-
-release_win32:
-	cargo build --release --target=i686-pc-windows-gnu
-	zip -j gip-v${VERSION}-i686-lnx.zip target/i686-unknown-linux-gnu/release/gip
-
-release_win64:
-	cargo build --release --target=x86_64-pc-windows-gnu
-	zip -j gip-v${VERSION}-x86_64-lnx.zip target/x86_64-unknown-linux-gnu/release/gip
-
