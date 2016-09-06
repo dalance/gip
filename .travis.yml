@@ -19,7 +19,7 @@ before_install:
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
 
 before_script:
-- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
+- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
 - export PATH=~/.cargo/bin:$PATH
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then rustup target add x86_64-unknown-linux-musl; fi
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then rustup target add i686-unknown-linux-gnu; fi
