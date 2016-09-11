@@ -1,5 +1,5 @@
-sudo: required
-dist: trusty
+#sudo: required
+#dist: trusty
 
 language: rust
 
@@ -11,11 +11,10 @@ env:
 - ARCH=i686
 - ARCH=x86_64
 
-rust: stable
+#rust: stable
 
 before_script:
-#- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
-- curl https://sh.rustup.rs -sSf | sh -s -- -y
+- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
 - export PATH=~/.cargo/bin:$PATH
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then rustup target add x86_64-unknown-linux-musl; fi
 - if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then rustup target add i686-unknown-linux-musl; fi
