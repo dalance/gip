@@ -19,7 +19,7 @@ clean:
 	cargo clean
 
 release_lnx32:
-	cargo build --release --target=i686-unknown-linux-gnu
+	cargo build --release --target=i686-unknown-linux-musl
 	zip -j gip-v${VERSION}-i686-lnx.zip target/i686-unknown-linux-gnu/release/gip
 
 release_lnx64:
