@@ -1,6 +1,3 @@
-#sudo: required
-#dist: trusty
-
 language: rust
 
 os:
@@ -10,8 +7,6 @@ os:
 env:
 - ARCH=i686
 - ARCH=x86_64
-
-#rust: stable
 
 before_script:
 - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
