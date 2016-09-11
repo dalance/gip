@@ -13,10 +13,10 @@ env:
 
 rust: stable
 
-before_install:
-- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
+#before_install:
+#- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
+#- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
+#- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then sudo apt-get install -y gcc-multilib g++-multilib; fi
 
 before_script:
 - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
