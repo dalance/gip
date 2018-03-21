@@ -4,28 +4,28 @@ os:
 - linux
 - osx
 
-env:
-- ARCH=i686
-- ARCH=x86_64
-
 before_script:
-- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain beta
-- export PATH=~/.cargo/bin:$PATH
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then rustup target add x86_64-unknown-linux-musl; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then rustup target add i686-unknown-linux-musl; fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then rustup target add i686-apple-darwin; fi
-- which cargo
-- which rustc
-- cargo --version
-- rustc --version
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then rustup target add x86_64-unknown-linux-musl; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then rustup target add x86_64-pc-windows-gnu; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq install gcc-mingw-w64-x86-64 musl-tools libssl-dev; fi
 
 script:
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then make test; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then make test; fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "i686"   ]]; then make release_osx32; fi
-- if [[ $TRAVIS_OS_NAME == "osx"   && $ARCH == "x86_64" ]]; then make release_osx64; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "i686"   ]]; then make release_lnx32; fi
-- if [[ $TRAVIS_OS_NAME == "linux" && $ARCH == "x86_64" ]]; then make release_lnx64; fi
+- make test
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then make release_lnx; fi
+- if [[ $TRAVIS_OS_NAME == "linux" ]]; then make release_win; fi
+- if [[ $TRAVIS_OS_NAME == "osx"   ]]; then make release_mac; fi
+
+after_success: |
+    if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+        bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
+        # Uncomment the following line for coveralls.io
+        # cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+
+        # Uncomment the following two lines create and upload a report for codecov.io
+        cargo tarpaulin --out Xml
+        bash <(curl -s https://codecov.io/bash)
+    fi
 
 deploy:
   provider: releases

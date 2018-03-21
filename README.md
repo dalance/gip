@@ -1,7 +1,9 @@
 # gip
 
 [![Build Status](https://travis-ci.org/dalance/gip.svg?branch=master)](https://travis-ci.org/dalance/gip)
-[![Build status](https://ci.appveyor.com/api/projects/status/ffqn56t1w5v9cihy?svg=true)](https://ci.appveyor.com/project/dalance/gip)
+[![Crates.io](https://img.shields.io/crates/v/gip.svg)](https://crates.io/crates/gip)
+[![Docs.rs](https://docs.rs/gip/badge.svg)](https://docs.rs/gip)
+[![codecov](https://codecov.io/gh/dalance/gip/branch/master/graph/badge.svg)](https://codecov.io/gh/dalance/gip)
 
 **gip** is a command-line tool and Rust library to check global IP address.
 
