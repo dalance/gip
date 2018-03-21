@@ -1,14 +1,17 @@
 extern crate core;
+#[macro_use]
+extern crate error_chain;
 extern crate hyper;
 extern crate rand;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 extern crate time;
 extern crate toml;
 
 use core::str::FromStr;
 use hyper::Client;
 use hyper::header::Connection;
-use rustc_serialize::json::Json;
 use time::Tm;
 use rand::{thread_rng, Rng};
 use std::io::Read;
@@ -16,12 +19,65 @@ use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use toml::{Parser, Table, Value};
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// Default providers
+// -------------------------------------------------------------------------------------------------
+
+pub static DEFAULT_TOML: &'static str = r#"
+    [[providers]]
+        name    = "inet-ip.info"
+        ptype   = "Plane"
+        timeout = 1000
+        url     = "http://inet-ip.info/ip"
+        key     = []
+
+    [[providers]]
+        name    = "httpbin.org"
+        ptype   = "Json"
+        timeout = 1000
+        url     = "http://httpbin.org/ip"
+        key     = ["origin"]
+
+    [[providers]]
+        name    = "ipify.org"
+        ptype   = "Plane"
+        timeout = 1000
+        url     = "http://api.ipify.org"
+        key     = []
+
+    [[providers]]
+        name    = "freegeoip"
+        ptype   = "Json"
+        timeout = 1000
+        url     = "http://freegeoip.net/json"
+        key     = ["ip"]
+"#;
+
+// -------------------------------------------------------------------------------------------------
+// Error
+// -------------------------------------------------------------------------------------------------
+
+error_chain! {
+    foreign_links {
+        AddrParse(::std::net::AddrParseError);
+        JsonParse(::serde_json::Error);
+        Hyper(::hyper::Error);
+        Toml(::toml::de::Error);
+    }
+    errors {
+        GetAddressFailed {
+            description("get address failed")
+            display("failed to get address")
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 // GlobalAddress
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct GlobalAddress {
     /// Time of checking address
     pub time: Tm,
@@ -31,158 +87,102 @@ pub struct GlobalAddress {
     pub provider: String,
 }
 
-impl GlobalAddress {
-    pub fn new() -> Self {
-        GlobalAddress {
-            time    : time::now(),
-            addr    : None,
-            provider: String::new(),
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Provider
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 pub trait Provider {
     /// Get global IP address
-    fn get_addr   ( &mut self ) -> GlobalAddress;
+    fn get_addr(&mut self) -> Result<GlobalAddress>;
     /// Get provider name
-    fn get_name   ( &self ) -> String;
+    fn get_name(&self) -> String;
     /// Set timeout by milliseconds
-    fn set_timeout( &mut self, timeout: usize );
+    fn set_timeout(&mut self, timeout: usize);
     /// Set proxy
-    fn set_proxy( &mut self, host: &str, port: u16 );
+    fn set_proxy(&mut self, host: &str, port: u16);
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // ProviderInfo
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 /// Format of return value from provider
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub enum ProviderType {
     /// Plane text format
     Plane,
     /// JSON format
-    Json ,
+    Json,
 }
 
+#[derive(Debug, Deserialize)]
 pub struct ProviderInfo {
     /// Provider name
-    pub name   : String      ,
+    pub name: String,
     /// Provider format
-    pub ptype  : ProviderType,
+    pub ptype: ProviderType,
     /// Timeout
-    pub timeout: usize       ,
+    pub timeout: usize,
     /// URL for GET
-    pub url    : String      ,
+    pub url: String,
     /// Key for JSON format
-    pub key    : Vec<String> ,
+    pub key: Vec<String>,
 }
 
 impl ProviderInfo {
     pub fn new() -> Self {
         ProviderInfo {
-            name   : String::from( "" ) ,
-            ptype  : ProviderType::Plane,
-            timeout: 1000               ,
-            url    : String::from( "" ) ,
-            key    : Vec::new()         ,
+            name: String::from(""),
+            ptype: ProviderType::Plane,
+            timeout: 1000,
+            url: String::from(""),
+            key: Vec::new(),
         }
-    }
-
-    /// Load provider info from TOML string
-    pub fn from_toml( s: &str ) -> Vec<ProviderInfo> {
-        let mut ret = Vec::new();
-        let mut parser = Parser::new( s );
-        match parser.parse() {
-            Some( table ) => {
-                match table.get( "providers" ) {
-                    Some( &Value::Array( ref providers ) ) => {
-                        for p in providers {
-                            match p {
-                                &Value::Table( ref p ) => {
-                                    let mut info = ProviderInfo::new();
-                                    info.name    = ProviderInfo::get_string ( &p, "name"   , "" );
-                                    info.ptype   = ProviderInfo::get_ptype  ( &p, "type"   , ProviderType::Plane );
-                                    info.timeout = ProviderInfo::get_usize  ( &p, "timeout", 1000 );
-                                    info.url     = ProviderInfo::get_string ( &p, "url"    , "" );
-                                    info.key     = ProviderInfo::get_strings( &p, "key" );
-                                    ret.push( info );
-                                }
-                                x => println!( "parse errors: {:?}", x ),
-                            }
-                        }
-                    },
-                    None => (),
-                    x    => println!( "parse errors: {:?}", x ),
-                }
-            }
-            None => println!( "parse errors: {:?}", parser.errors ),
-        }
-        ret
     }
 
     /// Create `Provider` from this info
-    pub fn create( &self ) -> Box<Provider> {
+    pub fn create(&self) -> Box<Provider> {
         match self.ptype {
             ProviderType::Plane => {
-                let mut p = Box::new( ProviderPlane::new() );
-                p.name    = self.name.clone();
+                let mut p = Box::new(ProviderPlane::new());
+                p.name = self.name.clone();
                 p.timeout = self.timeout;
-                p.url     = self.url.clone();
+                p.url = self.url.clone();
                 p
             }
             ProviderType::Json => {
-                let mut p = Box::new( ProviderJson::new() );
-                p.name    = self.name.clone();
+                let mut p = Box::new(ProviderJson::new());
+                p.name = self.name.clone();
                 p.timeout = self.timeout;
-                p.url     = self.url.clone();
-                p.key     = self.key.clone();
+                p.url = self.url.clone();
+                p.key = self.key.clone();
                 p
             }
         }
     }
-
-    fn get_string( table: &Table, key: &str, default: &str ) -> String {
-        let default_val = Value::String( String::from( default ) );
-        String::from( table.get( key ).unwrap_or( &default_val ).as_str().unwrap_or( default ) )
-    }
-
-    fn get_strings( table: &Table, key: &str ) -> Vec<String> {
-        let mut ret = Vec::new();
-        let default_val = Value::Array( Vec::new() );
-        let default_vec = Vec::new();
-        let array = table.get( key ).unwrap_or( &default_val ).as_slice().unwrap_or( &default_vec );
-        for a in array {
-            match a {
-                &Value::String( ref x ) => ret.push( x.clone() ),
-                _ => (),
-            }
-        }
-        ret
-    }
-
-    fn get_usize( table: &Table, key: &str, default: usize ) -> usize {
-        table.get( key ).unwrap_or( &Value::Integer( default as i64 ) ).as_integer().unwrap_or( default as i64 ) as usize
-    }
-
-    fn get_ptype( table: &Table, key: &str, default: ProviderType ) -> ProviderType {
-        let t = String::from( table.get( key ).unwrap_or( &Value::String( String::new() ) ).as_str().unwrap_or( "" ) );
-        match t.as_ref() {
-            "Plane" => ProviderType::Plane,
-            "Json"  => ProviderType::Json ,
-            _       => default            ,
-        }
-    }
-
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// ProviderList
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct ProviderList {
+    /// Provider list
+    pub providers: Vec<ProviderInfo>,
+}
+
+impl ProviderList {
+    /// Load provider info from TOML string
+    pub fn from_toml(s: &str) -> Result<ProviderList> {
+        let t: ProviderList = toml::from_str(s).chain_err(|| "failed to parse provider list")?;
+        Ok(t)
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 // ProviderAny
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 /// Provider for checking global address from multiple providers
 pub struct ProviderAny {
@@ -193,58 +193,57 @@ pub struct ProviderAny {
 impl ProviderAny {
     pub fn new() -> Self {
         ProviderAny {
-            providers : Vec::new(),
+            providers: Vec::new(),
         }
     }
 
     /// Load providers from TOML string
-    pub fn from_toml( s: &str  ) -> Self {
-        let infos = ProviderInfo::from_toml( s );
+    pub fn from_toml(s: &str) -> Result<Self> {
+        let list = ProviderList::from_toml(s)?;
         let mut p = Vec::new();
-        for i in infos {
-            p.push( i.create() );
+        for l in list.providers {
+            p.push(l.create());
         }
 
-        ProviderAny {
-            providers : p,
-        }
+        let ret = ProviderAny { providers: p };
+        Ok(ret)
     }
 }
 
 impl Provider for ProviderAny {
-    fn get_addr( &mut self ) -> GlobalAddress {
+    fn get_addr(&mut self) -> Result<GlobalAddress> {
         let mut rng = thread_rng();
-        rng.shuffle( &mut self.providers );
+        rng.shuffle(&mut self.providers);
 
         for p in &mut self.providers {
             let ret = p.get_addr();
-            if ret.addr.is_some() {
-                return ret
+            if ret.is_ok() {
+                return ret;
             }
         }
-        return GlobalAddress::new();
+        bail!(ErrorKind::GetAddressFailed)
     }
 
-    fn get_name( &self ) -> String {
-        String::from( "any" )
+    fn get_name(&self) -> String {
+        String::from("any")
     }
 
-    fn set_timeout( &mut self, timeout: usize ) {
+    fn set_timeout(&mut self, timeout: usize) {
         for p in &mut self.providers {
-            p.set_timeout( timeout )
+            p.set_timeout(timeout)
         }
     }
 
-    fn set_proxy( &mut self, host: &str, port: u16 ) {
+    fn set_proxy(&mut self, host: &str, port: u16) {
         for p in &mut self.providers {
-            p.set_proxy( host, port )
+            p.set_proxy(host, port)
         }
     }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // ProviderPlane
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 /// Provider for checking global address by plane text format.
 ///
@@ -253,95 +252,90 @@ impl Provider for ProviderAny {
 /// use gip::{Provider, ProviderPlane};
 /// let mut p = ProviderPlane::new();
 /// p.url = String::from( "http://inet-ip.info/ip" );
-/// let addr = p.get_addr();
+/// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.addr );
 /// ```
 pub struct ProviderPlane {
     /// Provider name
-    pub name   : String,
+    pub name: String,
     /// URL for GET
-    pub url    : String,
+    pub url: String,
     /// Timeout
-    pub timeout: usize ,
+    pub timeout: usize,
     /// Proxy
-    pub proxy  : Option<(String, u16)>,
+    pub proxy: Option<(String, u16)>,
 }
 
 impl ProviderPlane {
     pub fn new() -> Self {
         ProviderPlane {
-            name   : String::new(),
-            url    : String::new(),
+            name: String::new(),
+            url: String::new(),
             timeout: 1000,
-            proxy  : None,
+            proxy: None,
         }
     }
 }
 
 impl Provider for ProviderPlane {
-    fn get_addr( &mut self ) -> GlobalAddress {
-        let ( tx, rx ) = mpsc::channel();
+    fn get_addr(&mut self) -> Result<GlobalAddress> {
+        let (tx, rx) = mpsc::channel();
 
-        let name  = self.name.clone();
-        let url   = self.url.clone();
+        let name = self.name.clone();
+        let url = self.url.clone();
         let proxy = self.proxy.clone();
-        thread::spawn( move || {
+
+        thread::spawn(move || {
             let client = match proxy {
-                Some( ( x, y ) ) => Client::with_http_proxy( x, y ),
-                None             => Client::new(),
+                Some((x, y)) => Client::with_http_proxy(x, y),
+                None => Client::new(),
             };
-            let res = client.get( &url ).header( Connection::close() ).send();
-
-            let mut body = String::new();
-            match res {
-                Ok ( mut x ) => { let _ = x.read_to_string( &mut body ); },
-                Err( _     ) => return,
-            }
-
-            let addr = match Ipv4Addr::from_str( body.trim() ) {
-                Ok ( x ) => Some( x ),
-                Err( _ ) => return,
-            };
-
-            let ret = GlobalAddress {
-                time    : time::now(),
-                addr    : addr,
-                provider: name,
-            };
-            let _ = tx.send( ret );
-        } );
+            let res = client.get(&url).header(Connection::close()).send();
+            let _ = tx.send(res);
+        });
 
         let mut cnt = 0;
         loop {
             match rx.try_recv() {
-                Ok ( x ) => return x,
-                Err( _ ) => {
-                    thread::sleep( Duration::from_millis( 100 ) );
+                Ok(x) => {
+                    let mut body = String::new();
+                    let _ = x?.read_to_string(&mut body);
+                    let addr = Ipv4Addr::from_str(body.trim())?;
+
+                    let ret = GlobalAddress {
+                        time: time::now(),
+                        addr: Some(addr),
+                        provider: name,
+                    };
+                    return Ok(ret);
+                }
+                Err(_) => {
+                    thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        return GlobalAddress::new();
+                        bail!(ErrorKind::GetAddressFailed)
                     }
-                },
+                }
             }
         }
     }
 
-    fn get_name( &self ) -> String {
+    fn get_name(&self) -> String {
         self.name.clone()
     }
 
-    fn set_timeout( &mut self, timeout: usize ) {
+    fn set_timeout(&mut self, timeout: usize) {
         self.timeout = timeout
     }
 
-    fn set_proxy( &mut self, host: &str, port: u16 ) {
-        self.proxy = Some( ( String::from( host ), port ) )
+    fn set_proxy(&mut self, host: &str, port: u16) {
+        self.proxy = Some((String::from(host), port))
     }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // ProviderJson
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 /// Provider for checking global address by JSON format.
 ///
@@ -351,215 +345,154 @@ impl Provider for ProviderPlane {
 /// let mut p = ProviderJson::new();
 /// p.url = String::from( "http://httpbin.org/ip" );
 /// p.key = vec!["origin".to_string()];
-/// let addr = p.get_addr();
+/// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.addr );
 /// ```
 pub struct ProviderJson {
     /// Provider name
-    pub name   : String,
+    pub name: String,
     /// URL for GET
-    pub url    : String,
+    pub url: String,
     /// Key for JSON format
-    pub key    : Vec<String>,
+    pub key: Vec<String>,
     /// Timeout
-    pub timeout: usize ,
+    pub timeout: usize,
     /// Proxy
-    pub proxy  : Option<(String, u16)>,
+    pub proxy: Option<(String, u16)>,
 }
 
 impl ProviderJson {
     pub fn new() -> Self {
         ProviderJson {
-            name   : String::new(),
-            url    : String::new(),
-            key    : Vec::new(),
+            name: String::new(),
+            url: String::new(),
+            key: Vec::new(),
             timeout: 1000,
-            proxy  : None,
+            proxy: None,
         }
     }
 }
 
 impl Provider for ProviderJson {
-    fn get_addr( &mut self ) -> GlobalAddress {
-        let ( tx, rx ) = mpsc::channel();
+    fn get_addr(&mut self) -> Result<GlobalAddress> {
+        let (tx, rx) = mpsc::channel();
 
-        let name  = self.name.clone();
-        let url   = self.url.clone();
-        let key   = self.key.clone();
+        let name = self.name.clone();
+        let url = self.url.clone();
+        let key = self.key.clone();
         let proxy = self.proxy.clone();
-        thread::spawn( move || {
+
+        thread::spawn(move || {
             let client = match proxy {
-                Some( ( x, y ) ) => Client::with_http_proxy( x, y ),
-                None             => Client::new(),
+                Some((x, y)) => Client::with_http_proxy(x, y),
+                None => Client::new(),
             };
-            let res = client.get( &url ).header( Connection::close() ).send();
-
-            let mut body = String::new();
-            match res {
-                Ok ( mut x ) => { let _ = x.read_to_string( &mut body ); },
-                Err( _     ) => return,
-            }
-
-            let json = match Json::from_str( &body ) {
-                Ok ( x ) => x,
-                Err( _ ) => return,
-            };
-
-            let key: Vec<&str> = key.iter().map(|x| { let r: &str = &x; r } ).collect();
-            let addr = match json.find_path( &key[..] ) {
-                Some( &Json::String( ref x ) ) => x,
-                Some( _                      ) => return,
-                None                           => return,
-            };
-
-            let addr = match Ipv4Addr::from_str( &addr ) {
-                Ok ( x ) => Some( x ),
-                Err( _ ) => return,
-            };
-
-            let ret = GlobalAddress {
-                time    : time::now(),
-                addr    : addr,
-                provider: name,
-            };
-            let _ = tx.send( ret );
-        } );
+            let res = client.get(&url).header(Connection::close()).send();
+            let _ = tx.send(res);
+        });
 
         let mut cnt = 0;
         loop {
             match rx.try_recv() {
-                Ok ( x ) => return x,
-                Err( _ ) => {
-                    thread::sleep( Duration::from_millis( 100 ) );
+                Ok(x) => {
+                    let mut body = String::new();
+                    let _ = x?.read_to_string(&mut body);
+                    let json: serde_json::Value = serde_json::from_str(&body)?;
+                    let key = format!("/{}", key.join("/"));
+                    let addr = json.pointer(&key).unwrap().as_str().unwrap();
+                    let addr = Ipv4Addr::from_str(addr)?;
+
+                    let ret = GlobalAddress {
+                        time: time::now(),
+                        addr: Some(addr),
+                        provider: name,
+                    };
+                    return Ok(ret);
+                }
+                Err(_) => {
+                    thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        return GlobalAddress::new();
+                        bail!(ErrorKind::GetAddressFailed)
                     }
-                },
+                }
             }
         }
     }
 
-    fn get_name( &self ) -> String {
+    fn get_name(&self) -> String {
         self.name.clone()
     }
 
-    fn set_timeout( &mut self, timeout: usize ) {
+    fn set_timeout(&mut self, timeout: usize) {
         self.timeout = timeout
     }
 
-    fn set_proxy( &mut self, host: &str, port: u16 ) {
-        self.proxy = Some( ( String::from( host ), port ) )
+    fn set_proxy(&mut self, host: &str, port: u16) {
+        self.proxy = Some((String::from(host), port))
     }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Test
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    static DEFAULT_TOML: &'static str = r#"
-        [[providers]]
-            name    = "inet-ip.info"
-            ptype   = "Plane"
-            timeout = 1000
-            url     = "http://inet-ip.info/ip"
-
-        [[providers]]
-            name    = "myexternalip.com"
-            ptype   = "Plane"
-            timeout = 1000
-            url     = "http://myexternalip.com/raw"
-
-        [[providers]]
-            name    = "globalip.me"
-            ptype   = "Plane"
-            timeout = 1000
-            url     = "http://globalip.me?ip"
-
-        [[providers]]
-            name    = "ipify.org"
-            ptype   = "Plane"
-            timeout = 1000
-            url     = "http://api.ipify.org"
-
-        [[providers]]
-            name    = "httpbin.org"
-            ptype   = "Json"
-            timeout = 1000
-            url     = "http://httpbin.org/ip"
-            key     = ["origin"]
-    "#;
-
     #[test]
     fn inet_ip() {
         let mut p = ProviderPlane::new();
-        p.url = String::from( "http://inet-ip.info/ip" );
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
+        p.url = String::from("http://inet-ip.info/ip");
+        p.timeout = 2000;
+        let addr = p.get_addr().unwrap();
+        assert!(addr.addr.is_some());
+        assert!(!addr.addr.unwrap().is_private());
     }
 
     #[test]
     fn httpbin() {
         let mut p = ProviderJson::new();
-        p.url = String::from( "http://httpbin.org/ip" );
-        p.key = vec!["origin".to_string()];
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
-    }
-
-    #[test]
-    fn myexternalip() {
-        let mut p = ProviderJson::new();
-        p.url = String::from( "http://myexternalip/raw" );
-        p.key = vec!["origin".to_string()];
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
+        p.url = String::from("http://httpbin.org/ip");
+        p.key = vec![String::from("origin")];
+        p.timeout = 2000;
+        let addr = p.get_addr().unwrap();
+        assert!(addr.addr.is_some());
+        assert!(!addr.addr.unwrap().is_private());
     }
 
     #[test]
     fn ipify() {
         let mut p = ProviderPlane::new();
-        p.url = String::from( "http://api.ipify.org" );
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
+        p.url = String::from("http://api.ipify.org");
+        p.timeout = 2000;
+        let addr = p.get_addr().unwrap();
+        assert!(addr.addr.is_some());
+        assert!(!addr.addr.unwrap().is_private());
     }
 
     #[test]
-    fn globalip() {
-        let mut p = ProviderPlane::new();
-        p.url = String::from( "http://globalip.me?ip" );
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
-    }
-
-    #[test]
-    fn provider_info() {
-        let mut info = ProviderInfo::new();
-        info.name    = String::from( "test" );
-        info.ptype   = ProviderType::Json;
-        info.timeout = 100;
-        info.url     = String::from( "http://httpbin.org/ip" );
-        info.key     = vec!["origin".to_string()];
-
-        let mut p = info.create();
-        let addr = p.get_addr();
-        println!( "{:?}", addr.addr );
+    fn freegeoip() {
+        let mut p = ProviderJson::new();
+        p.url = String::from("http://freegeoip.net/json");
+        p.key = vec![String::from("ip")];
+        p.timeout = 2000;
+        let addr = p.get_addr().unwrap();
+        assert!(addr.addr.is_some());
+        assert!(!addr.addr.unwrap().is_private());
     }
 
     #[test]
     fn toml_load() {
-        let _ = ProviderInfo::from_toml( &DEFAULT_TOML );
+        let _ = ProviderList::from_toml(&DEFAULT_TOML);
     }
 
     #[test]
     fn provider_any() {
-        let mut p0 = ProviderAny::from_toml( &DEFAULT_TOML );
-        let addr = p0.get_addr();
-        println!( "{:?}", addr.addr );
+        let mut p0 = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
+        let addr = p0.get_addr().unwrap();
+        assert!(addr.addr.is_some());
+        assert!(!addr.addr.unwrap().is_private());
     }
 }
-
