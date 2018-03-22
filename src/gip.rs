@@ -5,7 +5,7 @@ extern crate gip;
 #[macro_use]
 extern crate structopt;
 
-use gip::{Provider, ProviderAny};
+use gip::{Provider, ProviderAny, ProviderType};
 use std::env::home_dir;
 use std::fs::File;
 use std::io::Read;
@@ -19,7 +19,16 @@ use structopt::StructOpt;
 #[structopt(name = "gip")]
 #[structopt(raw(long_version = "option_env!(\"LONG_VERSION\").unwrap_or(env!(\"CARGO_PKG_VERSION\"))"))]
 #[structopt(raw(setting = "clap::AppSettings::ColoredHelp"))]
+#[structopt(raw(setting = "clap::AppSettings::DeriveDisplayOrder"))]
 pub struct Opt {
+    /// IPv4 address ( default )
+    #[structopt(short = "4", long = "v4", conflicts_with = "v6")]
+    pub v4: bool,
+
+    /// IPv6 address
+    #[structopt(short = "6", long = "v6", conflicts_with = "v4")]
+    pub v6: bool,
+
     /// Show by plane text ( default )
     #[structopt(short = "p", long = "plane")]
     pub show_plane: bool,
@@ -49,7 +58,7 @@ pub struct Opt {
     pub show_list: bool,
 
     /// Show verbose message
-    #[structopt(short = "V", long = "verbose")]
+    #[structopt(short = "v", long = "verbose")]
     pub verbose: bool,
 }
 
@@ -60,6 +69,10 @@ pub struct Opt {
 error_chain! {
     links {
         Gip(::gip::Error, ::gip::ErrorKind);
+    }
+    foreign_links {
+        Io(::std::io::Error);
+        ParseInt(::std::num::ParseIntError);
     }
 }
 
@@ -75,10 +88,8 @@ pub fn run() -> Result<()> {
 }
 
 pub fn run_opt(opt: &Opt) -> Result<()> {
-
     let giprc = match home_dir() {
-        Some(p) => {
-            let mut p = p.clone();
+        Some(mut p) => {
             p.push(".gip.toml");
             if p.exists() {
                 Some(p)
@@ -91,13 +102,18 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
 
     let mut client = match giprc {
         Some(p) => {
-            let mut f = File::open(p).unwrap();
+            let mut f =
+                File::open(&p).chain_err(|| format!("failed to open {}", p.to_string_lossy()))?;
             let mut s = String::new();
             let _ = f.read_to_string(&mut s);
-            ProviderAny::from_toml(&s).unwrap()
+            ProviderAny::from_toml(&s)?
         }
-        None => ProviderAny::from_toml(&gip::DEFAULT_TOML).unwrap(),
+        None => ProviderAny::from_toml(&gip::DEFAULT_TOML)?,
     };
+
+    if opt.v6 {
+        client.ptype = ProviderType::IPv6;
+    }
 
     if opt.show_list {
         for p in &client.providers {
@@ -111,20 +127,17 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
     if opt.proxy.is_some() {
         let proxy_str = opt.proxy.clone().unwrap();
         let (host, port) = proxy_str.split_at(proxy_str.find(':').unwrap_or(0));
-        let port = port.trim_matches(':').parse::<u16>();
-        match port {
-            Ok(p) => client.set_proxy(host, p),
-            Err(_) => println!(
-                "Proxy format error: {} ( must be \"host:port\" format )",
-                proxy_str
-            ),
-        }
+        let port = port.trim_matches(':')
+            .parse::<u16>()
+            .chain_err(|| format!("failed to parse proxy: {}", proxy_str))?;
+        client.set_proxy(host, port);
     }
 
-    let addr = client.get_addr().unwrap();
-    let addr_str = match addr.addr {
-        Some(x) => format!("{:?}", x),
-        None => format!("Failed"),
+    let addr = client.get_addr()?;
+    let addr_str = if opt.v6 {
+        format!("{:?}", addr.v6addr.unwrap())
+    } else {
+        format!("{:?}", addr.v4addr.unwrap())
     };
 
     if opt.verbose {
@@ -192,4 +205,3 @@ mod tests {
         assert!(ret.is_ok());
     }
 }
-

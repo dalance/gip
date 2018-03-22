@@ -19,33 +19,54 @@ cargo install gip
 ## Usage
 
 ```
-gip                    // show global IP address by plane text.
-gip -s                 // show global IP address by plane text without line break.
-gip -j                 // show global IP address by JSON.                        ( ex. {"ip", "xxx.xxx.xxx.xxx"} )
-gip -j --json-key key  // show global IP address by JSON with the specified key. ( ex. {"key", "xxx.xxx.xxx.xxx"} )
+gip 0.3.2-pre
+dalance <dalance@gmail.com>
+A library and command-line frontend to check global IP address
+
+USAGE:
+    gip [FLAGS] [OPTIONS]
+
+FLAGS:
+    -4, --v4         IPv4 address ( default )
+    -6, --v6         IPv6 address
+    -p, --plane      Show by plane text ( default )
+    -s, --string     Show by plane text without line break
+    -j, --json       Show by JSON
+    -l, --list       Show provider list
+    -v, --verbose    Show verbose message
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+        --timeout <timeout>      Timeout per each provider by milliseconds [default: 1000]
+        --json-key <json_key>    Key string of JSON format [default: ip]
+        --proxy <proxy>          Proxy for HTTP access ( "host:port" )
 ```
 
 ## Providers
 Currently built-in service providers are the followings.
 
-- [inet-ip.info](http://inet-ip.info)
-- [ipify.org](http://ipify.org)
-- [httpbin.org](http://httpbin.org)
-- [freegeoip.net](http://freegeoip.net)
+- [inet-ip.info](http://inet-ip.info) ( v4 only )
+- [ipify.org](http://ipify.org) ( v4 only )
+- [httpbin.org](http://httpbin.org) ( v4 only )
+- [freegeoip.net](http://freegeoip.net) ( v4 only )
+- [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
+- [ident.me](http://api.ident.me) ( v4 / v6 )
 
 If you want to change providers, providers can be set by `$HOME/.gip.toml` like the following.
 
 ```
 [[providers]]
     name    = "inet-ip.info"
-    ptype   = "Plane"
-    timeout = 1000
+    ptype   = "IPv4"
+    format  = "Plane"
     url     = "http://inet-ip.info/ip"
+    key     = []
 
 [[providers]]
     name    = "httpbin.org"
-    ptype   = "Json"
-    timeout = 1000
+    ptype   = "IPv4"
+    format  = "Json"
     url     = "http://httpbin.org/ip"
     key     = ["origin"]
 ```
