@@ -64,7 +64,7 @@ pub static DEFAULT_TOML: &'static str = r#"
         name    = "ident.me"
         ptype   = "IPv4"
         format  = "Plane"
-        url     = "http://ident.me/"
+        url     = "http://v4.ident.me/"
         key     = []
 
     [[providers]]
