@@ -630,7 +630,7 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
-            .url("http://ident.me")
+            .url("http://v4.ident.me")
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr().unwrap();
