@@ -663,10 +663,16 @@ mod tests_v4 {
 
     #[test]
     fn provider_any() {
-        let mut p0 = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
-        let addr = p0.get_addr().unwrap();
+        let mut p = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
+        let addr = p.get_addr().unwrap();
         assert!(addr.v4addr.is_some());
         assert!(!addr.v4addr.unwrap().is_private());
+    }
+
+    #[test]
+    fn set_proxy() {
+        let mut p = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
+        p.set_proxy("example.com", 8080);
     }
 }
 

@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_verbose() {
-        let args = vec!["gip", "-V"];
+        let args = vec!["gip", "-v"];
         let opt = Opt::from_iter(args.iter());
         let ret = run_opt(&opt);
         assert!(ret.is_ok());
@@ -204,4 +204,19 @@ mod tests {
         let ret = run_opt(&opt);
         assert!(ret.is_ok());
     }
+
+    #[test]
+    fn test_v6() {
+        let args = vec!["gip", "-6"];
+        let opt = Opt::from_iter(args.iter());
+        let _ = run_opt(&opt);
+    }
+
+    #[test]
+    fn test_proxy() {
+        let args = vec!["gip", "--proxy", "example.com:8080"];
+        let opt = Opt::from_iter(args.iter());
+        let _ = run_opt(&opt);
+    }
+
 }
