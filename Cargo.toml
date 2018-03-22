@@ -6,7 +6,7 @@ repository = "https://github.com/dalance/gip"
 license = "MIT"
 readme = "README.md"
 description = "A library and command-line frontend to check global IP address"
-categories = ["command-line-utilities"]
+categories = ["command-line-utilities", "network-programming"]
 
 [badges]
 travis-ci = { repository = "dalance/gip" }
