@@ -87,9 +87,13 @@ error_chain! {
         Toml(::toml::de::Error);
     }
     errors {
-        GetAddressFailed {
-            description("get address failed")
-            display("failed to get address")
+        AllProvidersFailed {
+            description("all providers failed")
+            display("all providers failed to get address")
+        }
+        Timeout(timeout: usize) {
+            description("get address failed by timeout")
+            display("failed to get address by timeout ({}ms)", timeout)
         }
     }
 }
@@ -339,7 +343,7 @@ impl Provider for ProviderAny {
                 }
             }
         }
-        bail!(ErrorKind::GetAddressFailed)
+        bail!(ErrorKind::AllProvidersFailed)
     }
 
     fn get_name(&self) -> String {
@@ -437,7 +441,7 @@ impl Provider for ProviderPlane {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::GetAddressFailed)
+                        bail!(ErrorKind::Timeout(self.timeout))
                     }
                 }
             }
@@ -540,7 +544,7 @@ impl Provider for ProviderJson {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::GetAddressFailed)
+                        bail!(ErrorKind::Timeout(self.timeout))
                     }
                 }
             }
