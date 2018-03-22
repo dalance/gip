@@ -47,13 +47,6 @@ pub static DEFAULT_TOML: &'static str = r#"
         key     = []
 
     [[providers]]
-        name    = "freegeoip"
-        ptype   = "IPv4"
-        format  = "Json"
-        url     = "http://freegeoip.net/json"
-        key     = ["ip"]
-
-    [[providers]]
         name    = "ipv6-test"
         ptype   = "IPv4"
         format  = "Plane"
@@ -612,20 +605,6 @@ mod tests_v4 {
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://api.ipify.org")
-            .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
-    }
-
-    #[test]
-    fn freegeoip() {
-        let mut p = ProviderInfo::new()
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Json)
-            .url("http://freegeoip.net/json")
-            .key(&vec![String::from("ip")])
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr().unwrap();
