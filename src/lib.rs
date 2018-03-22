@@ -91,9 +91,13 @@ error_chain! {
             description("all providers failed")
             display("all providers failed to get address")
         }
-        Timeout(timeout: usize) {
-            description("get address failed by timeout")
-            display("failed to get address by timeout ({}ms)", timeout)
+        ConnectionFailed(url: String) {
+            description("connection failed")
+            display("failed to connect ({})", url)
+        }
+        Timeout(url: String, timeout: usize) {
+            description("timeout")
+            display("failed by timeout to {} ({}ms)", url, timeout)
         }
     }
 }
@@ -335,15 +339,23 @@ impl Provider for ProviderAny {
         let mut rng = thread_rng();
         rng.shuffle(&mut self.providers);
 
+        let mut err:Option<Error> = None;
         for p in &mut self.providers {
             if p.get_type() == self.ptype {
                 let ret = p.get_addr();
                 if ret.is_ok() {
                     return ret;
+                } else {
+                    if err.is_some() {
+                        err = Some(err.unwrap().chain_err(||ret.err().unwrap()));
+                    } else {
+                        err = Some(ret.err().unwrap());
+                    }
                 }
             }
         }
-        bail!(ErrorKind::AllProvidersFailed)
+        let err = err.unwrap().chain_err(||ErrorKind::AllProvidersFailed);
+        Err(err)
     }
 
     fn get_name(&self) -> String {
@@ -420,9 +432,10 @@ impl Provider for ProviderPlane {
         let mut cnt = 0;
         loop {
             match rx.try_recv() {
-                Ok(x) => {
+                Ok(res) => {
+                    let mut res = res.chain_err(||ErrorKind::ConnectionFailed(self.info.url.clone()))?;
                     let mut body = String::new();
-                    let _ = x?.read_to_string(&mut body);
+                    let _ = res.read_to_string(&mut body);
 
                     let ret = match self.info.ptype {
                         ProviderType::IPv4 => {
@@ -441,7 +454,7 @@ impl Provider for ProviderPlane {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::Timeout(self.timeout))
+                        bail!(ErrorKind::Timeout(self.info.url.clone(), self.timeout))
                     }
                 }
             }
@@ -520,9 +533,10 @@ impl Provider for ProviderJson {
         let mut cnt = 0;
         loop {
             match rx.try_recv() {
-                Ok(x) => {
+                Ok(res) => {
+                    let mut res = res.chain_err(||ErrorKind::ConnectionFailed(self.info.url.clone()))?;
                     let mut body = String::new();
-                    let _ = x?.read_to_string(&mut body);
+                    let _ = res.read_to_string(&mut body);
                     let json: serde_json::Value = serde_json::from_str(&body)?;
                     let key = format!("/{}", self.info.key.join("/"));
                     let addr = json.pointer(&key).unwrap().as_str().unwrap();
@@ -544,7 +558,7 @@ impl Provider for ProviderJson {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::Timeout(self.timeout))
+                        bail!(ErrorKind::Timeout(self.info.url.clone(), self.timeout))
                     }
                 }
             }
