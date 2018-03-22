@@ -1,6 +1,6 @@
 [package]
 name = "gip"
-version = "0.4.0"
+version = "0.4.1-pre"
 authors = ["dalance <dalance@gmail.com>"]
 repository = "https://github.com/dalance/gip"
 license = "MIT"
