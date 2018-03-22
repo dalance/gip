@@ -117,7 +117,7 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
 
     if opt.show_list {
         for p in &client.providers {
-            println!("{}", p.get_name());
+            println!("{:?}: {}", p.get_type(), p.get_name());
         }
         return Ok(());
     }
