@@ -593,6 +593,7 @@ mod tests_v4 {
     #[test]
     fn inet_ip() {
         let mut p = ProviderInfo::new()
+            .name("inet-ip.info")
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://inet-ip.info/ip")
@@ -606,6 +607,7 @@ mod tests_v4 {
     #[test]
     fn httpbin() {
         let mut p = ProviderInfo::new()
+            .name("httpbin.org")
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Json)
             .url("http://httpbin.org/ip")
@@ -620,6 +622,7 @@ mod tests_v4 {
     #[test]
     fn ipify() {
         let mut p = ProviderInfo::new()
+            .name("ipify.org")
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://api.ipify.org")
@@ -633,6 +636,7 @@ mod tests_v4 {
     #[test]
     fn ipv6_test() {
         let mut p = ProviderInfo::new()
+            .name("ipv6-test.com")
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://v4.ipv6-test.com/api/myip.php")
@@ -646,6 +650,7 @@ mod tests_v4 {
     #[test]
     fn ident_me() {
         let mut p = ProviderInfo::new()
+            .name("ident.me")
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://v4.ident.me")
