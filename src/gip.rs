@@ -30,15 +30,15 @@ pub struct Opt {
     pub v6: bool,
 
     /// Show by plane text ( default )
-    #[structopt(short = "p", long = "plane", conflicts_with = "string", conflicts_with = "json")]
+    #[structopt(short = "p", long = "plane", conflicts_with = "show_string", conflicts_with = "show_json")]
     pub show_plane: bool,
 
     /// Show by plane text without line break
-    #[structopt(short = "s", long = "string", conflicts_with = "plane", conflicts_with = "json")]
+    #[structopt(short = "s", long = "string", conflicts_with = "show_plane", conflicts_with = "show_json")]
     pub show_string: bool,
 
     /// Show by JSON
-    #[structopt(short = "j", long = "json", conflicts_with = "plane", conflicts_with = "string")]
+    #[structopt(short = "j", long = "json", conflicts_with = "show_plane", conflicts_with = "show_string")]
     pub show_json: bool,
 
     /// Timeout per each provider by milliseconds
