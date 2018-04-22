@@ -339,7 +339,7 @@ impl Provider for ProviderAny {
         let mut rng = thread_rng();
         rng.shuffle(&mut self.providers);
 
-        let mut err:Option<Error> = None;
+        let mut err: Option<Error> = None;
         for p in &mut self.providers {
             if p.get_type() == self.ptype {
                 let ret = p.get_addr();
@@ -347,14 +347,14 @@ impl Provider for ProviderAny {
                     return ret;
                 } else {
                     if err.is_some() {
-                        err = Some(err.unwrap().chain_err(||ret.err().unwrap()));
+                        err = Some(err.unwrap().chain_err(|| ret.err().unwrap()));
                     } else {
                         err = Some(ret.err().unwrap());
                     }
                 }
             }
         }
-        let err = err.unwrap().chain_err(||ErrorKind::AllProvidersFailed);
+        let err = err.unwrap().chain_err(|| ErrorKind::AllProvidersFailed);
         Err(err)
     }
 
@@ -433,7 +433,8 @@ impl Provider for ProviderPlane {
         loop {
             match rx.try_recv() {
                 Ok(res) => {
-                    let mut res = res.chain_err(||ErrorKind::ConnectionFailed(self.info.url.clone()))?;
+                    let mut res =
+                        res.chain_err(|| ErrorKind::ConnectionFailed(self.info.url.clone()))?;
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
 
@@ -534,7 +535,8 @@ impl Provider for ProviderJson {
         loop {
             match rx.try_recv() {
                 Ok(res) => {
-                    let mut res = res.chain_err(||ErrorKind::ConnectionFailed(self.info.url.clone()))?;
+                    let mut res =
+                        res.chain_err(|| ErrorKind::ConnectionFailed(self.info.url.clone()))?;
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
                     let json: serde_json::Value = serde_json::from_str(&body)?;
@@ -695,8 +697,8 @@ mod tests_v6 {
         p.set_timeout(2000);
         let addr = p.get_addr();
         match addr {
-            Ok ( x ) => assert!(x.v6addr.is_some()),
-            Err( _ ) => (),
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
         }
     }
 
@@ -710,8 +712,8 @@ mod tests_v6 {
         p.set_timeout(2000);
         let addr = p.get_addr();
         match addr {
-            Ok ( x ) => assert!(x.v6addr.is_some()),
-            Err( _ ) => (),
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
         }
     }
 
