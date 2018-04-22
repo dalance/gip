@@ -1,4 +1,3 @@
-extern crate clap;
 #[macro_use]
 extern crate error_chain;
 extern crate gip;
@@ -9,7 +8,7 @@ use gip::{Provider, ProviderAny, ProviderType};
 use std::env::home_dir;
 use std::fs::File;
 use std::io::Read;
-use structopt::StructOpt;
+use structopt::{clap, StructOpt};
 
 // -------------------------------------------------------------------------------------------------
 // Usage
