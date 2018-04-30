@@ -99,6 +99,10 @@ error_chain! {
             description("timeout")
             display("failed by timeout to {} ({}ms)", url, timeout)
         }
+        AddrParseFailed(addr: String) {
+            description("address parse failed")
+            display("failed to parse address ({})", addr)
+        }
     }
 }
 
@@ -440,11 +444,13 @@ impl Provider for ProviderPlane {
 
                     let ret = match self.info.ptype {
                         ProviderType::IPv4 => {
-                            let addr = Ipv4Addr::from_str(body.trim())?;
+                            let addr = Ipv4Addr::from_str(body.trim())
+                                .chain_err(|| ErrorKind::AddrParseFailed(body))?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
                         ProviderType::IPv6 => {
-                            let addr = Ipv6Addr::from_str(body.trim())?;
+                            let addr = Ipv6Addr::from_str(body.trim())
+                                .chain_err(|| ErrorKind::AddrParseFailed(body))?;
                             GlobalAddress::from_v6(addr, &self.info.name)
                         }
                     };
@@ -545,11 +551,13 @@ impl Provider for ProviderJson {
 
                     let ret = match self.info.ptype {
                         ProviderType::IPv4 => {
-                            let addr = Ipv4Addr::from_str(addr)?;
+                            let addr = Ipv4Addr::from_str(addr)
+                                .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
                         ProviderType::IPv6 => {
-                            let addr = Ipv6Addr::from_str(addr)?;
+                            let addr = Ipv6Addr::from_str(addr)
+                                .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
                             GlobalAddress::from_v6(addr, &self.info.name)
                         }
                     };
