@@ -1,14 +1,19 @@
+dist: trusty
 language: rust
+services: docker
+sudo: required
 
 os:
   - linux
   - osx
 
-before_script:
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then rustup target add x86_64-unknown-linux-musl; fi
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then rustup target add x86_64-pc-windows-gnu; fi
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq update; fi
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sudo apt-get -qq install gcc-mingw-w64-x86-64 musl-tools libssl-dev; fi
+before_install:
+  - set -e
+  - rustup self update
+
+install:
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sh ci/install.sh; fi
+  - if [[ $TRAVIS_OS_NAME == "osx"   ]]; then rustup target add i686-apple-darwin; fi
 
 script:
   - make test

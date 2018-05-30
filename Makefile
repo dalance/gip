@@ -22,13 +22,19 @@ clean:
 	cargo clean
 
 release_lnx:
-	cargo build --release --target=x86_64-unknown-linux-musl
+	cross build --release --target=x86_64-unknown-linux-musl
 	zip -j ${BIN_NAME}-v${VERSION}-x86_64-lnx.zip target/x86_64-unknown-linux-musl/release/${BIN_NAME}
+	cross build --release --target=i686-unknown-linux-musl
+	zip -j ${BIN_NAME}-v${VERSION}-i686-lnx.zip target/i686-unknown-linux-musl/release/${BIN_NAME}
 
 release_win:
-	cargo build --release --target=x86_64-pc-windows-gnu
+	cross build --release --target=x86_64-pc-windows-gnu
 	zip -j ${BIN_NAME}-v${VERSION}-x86_64-win.zip target/x86_64-pc-windows-gnu/release/${BIN_NAME}.exe
+	cross build --release --target=i686-pc-windows-gnu
+	zip -j ${BIN_NAME}-v${VERSION}-i686-win.zip target/i686-pc-windows-gnu/release/${BIN_NAME}.exe
 
 release_mac:
 	cargo build --release --target=x86_64-apple-darwin
 	zip -j ${BIN_NAME}-v${VERSION}-x86_64-mac.zip target/x86_64-apple-darwin/release/${BIN_NAME}
+	cargo build --release --target=i686-apple-darwin
+	zip -j ${BIN_NAME}-v${VERSION}-i686-mac.zip target/i686-apple-darwin/release/${BIN_NAME}
