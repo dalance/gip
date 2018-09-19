@@ -163,7 +163,7 @@ pub trait Provider {
     /// Get provider name
     fn get_name(&self) -> String;
     /// Get provider type
-    fn get_type(&self) -> ProviderType;
+    fn get_type(&self) -> ProviderInfoType;
     /// Set timeout by milliseconds
     fn set_timeout(&mut self, timeout: usize);
     /// Set proxy
@@ -176,14 +176,14 @@ pub trait Provider {
 
 /// Type of global address from provider
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub enum ProviderType {
+pub enum ProviderInfoType {
     IPv4,
     IPv6,
 }
 
 /// Format of return value from provider
 #[derive(Debug, Deserialize)]
-pub enum ProviderFormat {
+pub enum ProviderInfoFormat {
     /// Plane text format
     Plane,
     /// JSON format
@@ -195,9 +195,9 @@ pub struct ProviderInfo {
     /// Provider name
     pub name: String,
     /// Provider type
-    pub ptype: ProviderType,
+    pub ptype: ProviderInfoType,
     /// Provider format
-    pub format: ProviderFormat,
+    pub format: ProviderInfoFormat,
     /// URL for GET
     pub url: String,
     /// Key for JSON format
@@ -210,11 +210,11 @@ pub struct ProviderInfo {
 ///
 /// # Examples
 /// ```
-/// use gip::{ProviderFormat, ProviderInfo, ProviderType};
+/// use gip::{ProviderInfo, ProviderInfoFormat, ProviderInfoType};
 /// let p = ProviderInfo::new()
 ///     .name("inet-ip.info")
-///     .ptype(ProviderType::IPv4)
-///     .format(ProviderFormat::Plane)
+///     .ptype(ProviderInfoType::IPv4)
+///     .format(ProviderInfoFormat::Plane)
 ///     .url("http://inet-ip.info/ip")
 ///     .key(&vec![]);
 /// println!("{:?}", p);
@@ -223,8 +223,8 @@ impl ProviderInfo {
     pub fn new() -> Self {
         ProviderInfo {
             name: String::from(""),
-            ptype: ProviderType::IPv4,
-            format: ProviderFormat::Plane,
+            ptype: ProviderInfoType::IPv4,
+            format: ProviderInfoFormat::Plane,
             url: String::from(""),
             key: Vec::new(),
             padding: None,
@@ -242,7 +242,7 @@ impl ProviderInfo {
         }
     }
 
-    pub fn ptype(self, ptype: ProviderType) -> Self {
+    pub fn ptype(self, ptype: ProviderInfoType) -> Self {
         ProviderInfo {
             name: self.name,
             ptype: ptype,
@@ -253,7 +253,7 @@ impl ProviderInfo {
         }
     }
 
-    pub fn format(self, format: ProviderFormat) -> Self {
+    pub fn format(self, format: ProviderInfoFormat) -> Self {
         ProviderInfo {
             name: self.name,
             ptype: self.ptype,
@@ -300,12 +300,12 @@ impl ProviderInfo {
     /// Create `Provider` from this info
     pub fn create(self) -> Box<Provider> {
         match self.format {
-            ProviderFormat::Plane => {
+            ProviderInfoFormat::Plane => {
                 let mut p = Box::new(ProviderPlane::new());
                 p.info = self;
                 p
             }
-            ProviderFormat::Json => {
+            ProviderInfoFormat::Json => {
                 let mut p = Box::new(ProviderJson::new());
                 p.info = self;
                 p
@@ -315,19 +315,20 @@ impl ProviderInfo {
 }
 
 // -------------------------------------------------------------------------------------------------
-// ProviderList
+// ProviderInfoList
 // -------------------------------------------------------------------------------------------------
 
+/// Provider information list
 #[derive(Debug, Deserialize)]
-pub struct ProviderList {
-    /// Provider list
+pub struct ProviderInfoList {
+    /// Provider information list
     pub providers: Vec<ProviderInfo>,
 }
 
-impl ProviderList {
+impl ProviderInfoList {
     /// Load provider info from TOML string
-    pub fn from_toml(s: &str) -> Result<ProviderList> {
-        let t: ProviderList = toml::from_str(s).chain_err(|| "failed to parse provider list")?;
+    pub fn from_toml(s: &str) -> Result<ProviderInfoList> {
+        let t: ProviderInfoList = toml::from_str(s).chain_err(|| "failed to parse provider list")?;
         Ok(t)
     }
 }
@@ -341,20 +342,20 @@ pub struct ProviderAny {
     /// Providers for checking global address
     pub providers: Vec<Box<Provider>>,
     /// Provider type
-    pub ptype: ProviderType,
+    pub ptype: ProviderInfoType,
 }
 
 impl ProviderAny {
     pub fn new() -> Self {
         ProviderAny {
             providers: Vec::new(),
-            ptype: ProviderType::IPv4,
+            ptype: ProviderInfoType::IPv4,
         }
     }
 
     /// Load providers from TOML string
     pub fn from_toml(s: &str) -> Result<Self> {
-        let list = ProviderList::from_toml(s)?;
+        let list = ProviderInfoList::from_toml(s)?;
         let mut p = Vec::new();
         for l in list.providers {
             p.push(l.create());
@@ -362,7 +363,7 @@ impl ProviderAny {
 
         let ret = ProviderAny {
             providers: p,
-            ptype: ProviderType::IPv4,
+            ptype: ProviderInfoType::IPv4,
         };
         Ok(ret)
     }
@@ -396,7 +397,7 @@ impl Provider for ProviderAny {
         String::from("any")
     }
 
-    fn get_type(&self) -> ProviderType {
+    fn get_type(&self) -> ProviderInfoType {
         self.ptype.clone()
     }
 
@@ -473,12 +474,12 @@ impl Provider for ProviderPlane {
                     let _ = res.read_to_string(&mut body);
 
                     let ret = match self.info.ptype {
-                        ProviderType::IPv4 => {
+                        ProviderInfoType::IPv4 => {
                             let addr = Ipv4Addr::from_str(body.trim())
                                 .chain_err(|| ErrorKind::AddrParseFailed(body))?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
-                        ProviderType::IPv6 => {
+                        ProviderInfoType::IPv6 => {
                             let addr = Ipv6Addr::from_str(body.trim())
                                 .chain_err(|| ErrorKind::AddrParseFailed(body))?;
                             GlobalAddress::from_v6(addr, &self.info.name)
@@ -502,7 +503,7 @@ impl Provider for ProviderPlane {
         self.info.name.clone()
     }
 
-    fn get_type(&self) -> ProviderType {
+    fn get_type(&self) -> ProviderInfoType {
         self.info.ptype.clone()
     }
 
@@ -519,13 +520,13 @@ impl Provider for ProviderPlane {
 // ProviderJson
 // -------------------------------------------------------------------------------------------------
 
-/// Provider for checking global address by JSON format.
+/// A `Provider` implementation for checking global address by JSON format.
 ///
 /// # Examples
 /// ```
-/// use gip::{ProviderFormat, ProviderInfo};
+/// use gip::{ProviderInfo, ProviderInfoFormat};
 /// let mut p = ProviderInfo::new()
-///     .format(ProviderFormat::Json)
+///     .format(ProviderInfoFormat::Json)
 ///     .url("http://ipv4.test-ipv6.com/ip/")
 ///     .key(&vec![String::from("ip")])
 ///     .padding("callback")
@@ -588,12 +589,12 @@ impl Provider for ProviderJson {
                     let addr = json.pointer(&key).unwrap().as_str().unwrap();
 
                     let ret = match self.info.ptype {
-                        ProviderType::IPv4 => {
+                        ProviderInfoType::IPv4 => {
                             let addr = Ipv4Addr::from_str(addr)
                                 .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
-                        ProviderType::IPv6 => {
+                        ProviderInfoType::IPv6 => {
                             let addr = Ipv6Addr::from_str(addr)
                                 .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
                             GlobalAddress::from_v6(addr, &self.info.name)
@@ -617,7 +618,7 @@ impl Provider for ProviderJson {
         self.info.name.clone()
     }
 
-    fn get_type(&self) -> ProviderType {
+    fn get_type(&self) -> ProviderInfoType {
         self.info.ptype.clone()
     }
 
@@ -642,8 +643,8 @@ mod tests_v4 {
     fn inet_ip() {
         let mut p = ProviderInfo::new()
             .name("inet-ip.info")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv4)
+            .format(ProviderInfoFormat::Plane)
             .url("http://inet-ip.info/ip")
             .create();
         p.set_timeout(2000);
@@ -656,8 +657,8 @@ mod tests_v4 {
     fn ipify() {
         let mut p = ProviderInfo::new()
             .name("ipify.org")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv4)
+            .format(ProviderInfoFormat::Plane)
             .url("http://api.ipify.org")
             .create();
         p.set_timeout(2000);
@@ -670,8 +671,8 @@ mod tests_v4 {
     fn ipv6_test() {
         let mut p = ProviderInfo::new()
             .name("ipv6-test.com")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv4)
+            .format(ProviderInfoFormat::Plane)
             .url("http://v4.ipv6-test.com/api/myip.php")
             .create();
         p.set_timeout(2000);
@@ -684,8 +685,8 @@ mod tests_v4 {
     fn ident_me() {
         let mut p = ProviderInfo::new()
             .name("ident.me")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv4)
+            .format(ProviderInfoFormat::Plane)
             .url("http://v4.ident.me")
             .create();
         p.set_timeout(2000);
@@ -698,8 +699,8 @@ mod tests_v4 {
     fn test_ipv6() {
         let mut p = ProviderInfo::new()
             .name("test-ipv6.com")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Json)
+            .ptype(ProviderInfoType::IPv4)
+            .format(ProviderInfoFormat::Json)
             .url("http://ipv4.test-ipv6.com/ip/")
             .key(&vec![String::from("ip")])
             .padding("callback")
@@ -712,7 +713,7 @@ mod tests_v4 {
 
     #[test]
     fn toml_load() {
-        let _ = ProviderList::from_toml(&DEFAULT_TOML);
+        let _ = ProviderInfoList::from_toml(&DEFAULT_TOML);
     }
 
     #[test]
@@ -737,8 +738,8 @@ mod tests_v6 {
     #[test]
     fn ipv6_test() {
         let mut p = ProviderInfo::new()
-            .ptype(ProviderType::IPv6)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv6)
+            .format(ProviderInfoFormat::Plane)
             .url("http://v6.ipv6-test.com/api/myip.php")
             .create();
         p.set_timeout(2000);
@@ -752,8 +753,8 @@ mod tests_v6 {
     #[test]
     fn ident_me() {
         let mut p = ProviderInfo::new()
-            .ptype(ProviderType::IPv6)
-            .format(ProviderFormat::Plane)
+            .ptype(ProviderInfoType::IPv6)
+            .format(ProviderInfoFormat::Plane)
             .url("http://v6.ident.me")
             .create();
         p.set_timeout(2000);
@@ -768,8 +769,8 @@ mod tests_v6 {
     fn test_ipv6() {
         let mut p = ProviderInfo::new()
             .name("test-ipv6.com")
-            .ptype(ProviderType::IPv6)
-            .format(ProviderFormat::Json)
+            .ptype(ProviderInfoType::IPv6)
+            .format(ProviderInfoFormat::Json)
             .url("http://ipv6.test-ipv6.com/ip/")
             .key(&vec![String::from("ip")])
             .padding("callback")

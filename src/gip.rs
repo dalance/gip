@@ -6,7 +6,7 @@ extern crate gip;
 extern crate structopt;
 
 use dirs::home_dir;
-use gip::{Provider, ProviderAny, ProviderType};
+use gip::{Provider, ProviderAny, ProviderInfoType};
 use std::fs::File;
 use std::io::Read;
 use structopt::{clap, StructOpt};
@@ -115,7 +115,7 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
     };
 
     if opt.v6 {
-        client.ptype = ProviderType::IPv6;
+        client.ptype = ProviderInfoType::IPv6;
     }
 
     if opt.show_list {
