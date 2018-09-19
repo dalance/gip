@@ -48,9 +48,9 @@ Currently built-in service providers are the followings.
 
 - [inet-ip.info](http://inet-ip.info) ( v4 only )
 - [ipify.org](http://ipify.org) ( v4 only )
-- [httpbin.org](http://httpbin.org) ( v4 only )
 - [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
 - [ident.me](http://api.ident.me) ( v4 / v6 )
+- [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 
 If you want to change providers, providers can be set by `$HOME/.gip.toml` like the following.
 
