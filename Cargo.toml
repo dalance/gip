@@ -37,7 +37,8 @@ dev-version-ext            = "pre"
 pre-release-commit-message = "Prepare to v{{version}}"
 pro-release-commit-message = "Start next development iteration v{{version}}"
 pre-release-replacements   = [
-    { file = "README.md", search = "gip = \"[a-z0-9\\.-]+\"", replace = "gip = \"{{version}}\"" },
+    { file = "README.md" , search = "gip = \"[a-z0-9\\.-]+\"", replace = "gip = \"{{version}}\"" },
+    { file = "src/lib.rs", search = "gip = \"[a-z0-9\\.-]+\"", replace = "gip = \"{{version}}\"" },
 ]
 tag-message                = "Bump version to {{version}}"
 tag-prefix                 = "v"

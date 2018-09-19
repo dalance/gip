@@ -1,3 +1,64 @@
+/*!
+This crate provides a library for checking global IP address.
+This crate get IP address information from IP address checking services like [inet-ip.info](http://inet-ip.info), [ipify.org](http://ipify.org), etc.
+
+# Usage
+
+This crate can be used by adding `gip` to your dependencies in `Cargo.toml`.
+
+```toml
+[dependencies]
+gip = "0.5.1"
+```
+
+and this to your crate root:
+
+```rust
+extern crate gip;
+```
+
+# Example
+
+`Provider` trait provide `get_addr` function to check global IP address.
+`ProviderDefaultV4` is a `Provider` implementation with built-in providers for IPv4 address.
+
+```rust
+use gip::{Provider, ProviderDefaultV4};
+let mut p = ProviderDefaultV4::new();
+let addr = p.get_addr();
+match addr {
+    Ok(x) => println!( "Global IPv4 address is {:?}", x.v4addr ),
+    Err(_) => (),
+}
+```
+
+`ProviderDefaultV6` is for IPv6 address.
+
+```rust
+use gip::{Provider, ProviderDefaultV6};
+let mut p = ProviderDefaultV6::new();
+let addr = p.get_addr();
+match addr {
+    Ok(x) => println!( "Global IPv6 address is {:?}", x.v6addr ),
+    Err(_) => (),
+}
+```
+
+`ProviderDefaultV4` and `ProviderDefaultV6` tries the next provider if a provider is failed to access.
+So `get_addr` successes unless all providers failed.
+
+# Built-in providers
+
+`ProviderDefaultV4` and `ProviderDefaultV6` use the built-in provider list ( defined as `DEFAULT_TOML` ):
+
+- [inet-ip.info](http://inet-ip.info) ( v4 only )
+- [ipify.org](http://ipify.org) ( v4 only )
+- [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
+- [ident.me](http://api.ident.me) ( v4 / v6 )
+- [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
+
+*/
+
 extern crate core;
 #[macro_use]
 extern crate error_chain;
@@ -26,6 +87,7 @@ use std::time::Duration;
 // Default providers
 // -------------------------------------------------------------------------------------------------
 
+/// Built-in providers list
 pub static DEFAULT_TOML: &'static str = r#"
     [[providers]]
         name    = "inet-ip.info"
@@ -121,15 +183,16 @@ error_chain! {
 // GlobalAddress
 // -------------------------------------------------------------------------------------------------
 
+/// Global address information
 #[derive(Debug)]
 pub struct GlobalAddress {
-    /// Time of checking address
+    /// Address checking time
     pub time: Tm,
     /// Global IP address by IPv4
     pub v4addr: Option<Ipv4Addr>,
     /// Global IP address by IPv6
     pub v6addr: Option<Ipv6Addr>,
-    /// Provider name used for checking address
+    /// Provider name
     pub provider: String,
 }
 
@@ -157,6 +220,7 @@ impl GlobalAddress {
 // Provider
 // -------------------------------------------------------------------------------------------------
 
+/// Provider describes types that can provide global address information
 pub trait Provider {
     /// Get global IP address
     fn get_addr(&mut self) -> Result<GlobalAddress>;
@@ -190,6 +254,7 @@ pub enum ProviderInfoFormat {
     Json,
 }
 
+/// Provider information
 #[derive(Debug, Deserialize)]
 pub struct ProviderInfo {
     /// Provider name
@@ -337,7 +402,7 @@ impl ProviderInfoList {
 // ProviderAny
 // -------------------------------------------------------------------------------------------------
 
-/// Provider for checking global address from multiple providers
+/// A `Provider` implementation to try multiple providers
 pub struct ProviderAny {
     /// Providers for checking global address
     pub providers: Vec<Box<Provider>>,
@@ -418,7 +483,7 @@ impl Provider for ProviderAny {
 // ProviderPlane
 // -------------------------------------------------------------------------------------------------
 
-/// Provider for checking global address by plane text format.
+/// A `Provider` implementation for checking global address by plane text format.
 ///
 /// # Examples
 /// ```
@@ -628,6 +693,105 @@ impl Provider for ProviderJson {
 
     fn set_proxy(&mut self, host: &str, port: u16) {
         self.proxy = Some((String::from(host), port))
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// ProviderDefaultV4
+// -------------------------------------------------------------------------------------------------
+
+/// A convinient wrapper of `ProviderAny` with default providers for IPv4
+///
+/// # Examples
+/// ```
+/// use gip::{Provider, ProviderDefaultV4};
+/// let mut p = ProviderDefaultV4::new();
+/// let addr = p.get_addr().unwrap();
+/// println!( "{:?}", addr.v4addr );
+/// ```
+pub struct ProviderDefaultV4 {
+    provider: ProviderAny,
+}
+
+impl ProviderDefaultV4 {
+    pub fn new() -> Self {
+        ProviderDefaultV4 {
+            provider: ProviderAny::from_toml(&DEFAULT_TOML).unwrap(),
+        }
+    }
+}
+
+impl Provider for ProviderDefaultV4 {
+    fn get_addr(&mut self) -> Result<GlobalAddress> {
+        self.provider.get_addr()
+    }
+
+    fn get_name(&self) -> String {
+        self.provider.get_name()
+    }
+
+    fn get_type(&self) -> ProviderInfoType {
+        self.provider.get_type()
+    }
+
+    fn set_timeout(&mut self, timeout: usize) {
+        self.provider.set_timeout(timeout)
+    }
+
+    fn set_proxy(&mut self, host: &str, port: u16) {
+        self.provider.set_proxy(host, port)
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// ProviderDefaultV6
+// -------------------------------------------------------------------------------------------------
+
+/// A convinient wrapper of `ProviderAny` with default providers for IPv6
+///
+/// # Examples
+/// ```
+/// use gip::{Provider, ProviderDefaultV6};
+/// let mut p = ProviderDefaultV6::new();
+/// let addr = p.get_addr();
+/// match addr {
+///     Ok(x) => println!( "{:?}", x.v6addr ),
+///     Err(_) => (),
+/// }
+/// ```
+pub struct ProviderDefaultV6 {
+    provider: ProviderAny,
+}
+
+impl ProviderDefaultV6 {
+    pub fn new() -> Self {
+        let mut p = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
+        p.ptype = ProviderInfoType::IPv6;
+        ProviderDefaultV6 {
+            provider: p,
+        }
+    }
+}
+
+impl Provider for ProviderDefaultV6 {
+    fn get_addr(&mut self) -> Result<GlobalAddress> {
+        self.provider.get_addr()
+    }
+
+    fn get_name(&self) -> String {
+        self.provider.get_name()
+    }
+
+    fn get_type(&self) -> ProviderInfoType {
+        self.provider.get_type()
+    }
+
+    fn set_timeout(&mut self, timeout: usize) {
+        self.provider.set_timeout(timeout)
+    }
+
+    fn set_proxy(&mut self, host: &str, port: u16) {
+        self.provider.set_proxy(host, port)
     }
 }
 
