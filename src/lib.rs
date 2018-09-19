@@ -8,7 +8,7 @@ This crate can be used by adding `gip` to your dependencies in `Cargo.toml`.
 
 ```toml
 [dependencies]
-gip = "0.5.1"
+gip = "0.6.0"
 ```
 
 and this to your crate root:
