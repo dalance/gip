@@ -10,6 +10,7 @@ os:
 before_install:
   - set -e
   - rustup self update
+  - rustup install nightly
 
 install:
   - if [[ $TRAVIS_OS_NAME == "linux" ]]; then sh ci/install.sh; fi
