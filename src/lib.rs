@@ -35,13 +35,6 @@ pub static DEFAULT_TOML: &'static str = r#"
         key     = []
 
     [[providers]]
-        name    = "httpbin.org"
-        ptype   = "IPv4"
-        format  = "Json"
-        url     = "http://httpbin.org/ip"
-        key     = ["origin"]
-
-    [[providers]]
         name    = "ipify.org"
         ptype   = "IPv4"
         format  = "Plane"
@@ -533,8 +526,9 @@ impl Provider for ProviderPlane {
 /// use gip::{ProviderFormat, ProviderInfo};
 /// let mut p = ProviderInfo::new()
 ///     .format(ProviderFormat::Json)
-///     .url("http://httpbin.org/ip")
-///     .key(&vec!["origin".to_string()])
+///     .url("http://ipv4.test-ipv6.com/ip/")
+///     .key(&vec![String::from("ip")])
+///     .padding("callback")
 ///     .create();
 /// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.v4addr );
@@ -651,21 +645,6 @@ mod tests_v4 {
             .ptype(ProviderType::IPv4)
             .format(ProviderFormat::Plane)
             .url("http://inet-ip.info/ip")
-            .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
-    }
-
-    #[test]
-    fn httpbin() {
-        let mut p = ProviderInfo::new()
-            .name("httpbin.org")
-            .ptype(ProviderType::IPv4)
-            .format(ProviderFormat::Json)
-            .url("http://httpbin.org/ip")
-            .key(&vec![String::from("origin")])
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr().unwrap();
