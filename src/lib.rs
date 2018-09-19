@@ -75,6 +75,22 @@ pub static DEFAULT_TOML: &'static str = r#"
         format  = "Plane"
         url     = "http://v6.ident.me/"
         key     = []
+
+    [[providers]]
+        name    = "test-ipv6"
+        ptype   = "IPv4"
+        format  = "Json"
+        url     = "http://ipv4.test-ipv6.com/ip/"
+        key     = ["ip"]
+        padding = "callback"
+
+    [[providers]]
+        name    = "test-ipv6"
+        ptype   = "IPv6"
+        format  = "Json"
+        url     = "http://ipv6.test-ipv6.com/ip/"
+        key     = ["ip"]
+        padding = "callback"
 "#;
 
 // -------------------------------------------------------------------------------------------------
@@ -700,6 +716,22 @@ mod tests_v4 {
     }
 
     #[test]
+    fn test_ipv6() {
+        let mut p = ProviderInfo::new()
+            .name("test-ipv6.com")
+            .ptype(ProviderType::IPv4)
+            .format(ProviderFormat::Json)
+            .url("http://ipv4.test-ipv6.com/ip/")
+            .key(&vec![String::from("ip")])
+            .padding("callback")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr().unwrap();
+        assert!(addr.v4addr.is_some());
+        assert!(!addr.v4addr.unwrap().is_private());
+    }
+
+    #[test]
     fn toml_load() {
         let _ = ProviderList::from_toml(&DEFAULT_TOML);
     }
@@ -753,4 +785,21 @@ mod tests_v6 {
         }
     }
 
+    #[test]
+    fn test_ipv6() {
+        let mut p = ProviderInfo::new()
+            .name("test-ipv6.com")
+            .ptype(ProviderType::IPv6)
+            .format(ProviderFormat::Json)
+            .url("http://ipv6.test-ipv6.com/ip/")
+            .key(&vec![String::from("ip")])
+            .padding("callback")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr();
+        match addr {
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
+        }
+    }
 }
