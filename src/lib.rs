@@ -3,6 +3,7 @@ extern crate core;
 extern crate error_chain;
 extern crate hyper;
 extern crate rand;
+extern crate regex;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -14,6 +15,7 @@ use hyper::Client;
 use hyper::header::Connection;
 use time::Tm;
 use rand::{thread_rng, Rng};
+use regex::Regex;
 use std::io::Read;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
@@ -191,6 +193,8 @@ pub struct ProviderInfo {
     pub url: String,
     /// Key for JSON format
     pub key: Vec<String>,
+    /// Padding for JSON format
+    pub padding: Option<String>,
 }
 
 /// Provider information.
@@ -214,6 +218,7 @@ impl ProviderInfo {
             format: ProviderFormat::Plane,
             url: String::from(""),
             key: Vec::new(),
+            padding: None,
         }
     }
 
@@ -224,6 +229,7 @@ impl ProviderInfo {
             format: self.format,
             url: self.url,
             key: self.key,
+            padding: self.padding,
         }
     }
 
@@ -234,6 +240,7 @@ impl ProviderInfo {
             format: self.format,
             url: self.url,
             key: self.key,
+            padding: self.padding,
         }
     }
 
@@ -244,6 +251,7 @@ impl ProviderInfo {
             format: format,
             url: self.url,
             key: self.key,
+            padding: self.padding,
         }
     }
 
@@ -254,6 +262,7 @@ impl ProviderInfo {
             format: self.format,
             url: String::from(url),
             key: self.key,
+            padding: self.padding,
         }
     }
 
@@ -264,6 +273,18 @@ impl ProviderInfo {
             format: self.format,
             url: self.url,
             key: key.clone(),
+            padding: self.padding,
+        }
+    }
+
+    pub fn padding(self, padding: &str) -> Self {
+        ProviderInfo {
+            name: self.name,
+            ptype: self.ptype,
+            format: self.format,
+            url: self.url,
+            key: self.key,
+            padding: Some(String::from(padding)),
         }
     }
 
@@ -545,6 +566,13 @@ impl Provider for ProviderJson {
                         res.chain_err(|| ErrorKind::ConnectionFailed(self.info.url.clone()))?;
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
+                    if let Some(ref padding) = self.info.padding {
+                        body = {
+                            let re = Regex::new( &format!( r"{:}\s*\((.*)\)", padding ) ).unwrap();
+                            let cap = re.captures(&body).unwrap();
+                            String::from(cap.get(1).unwrap().as_str())
+                        };
+                    }
                     let json: serde_json::Value = serde_json::from_str(&body)?;
                     let key = format!("/{}", self.info.key.join("/"));
                     let addr = json.pointer(&key).unwrap().as_str().unwrap();
