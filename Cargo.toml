@@ -17,6 +17,7 @@ name = "gip"
 path = "src/gip.rs"
 
 [dependencies]
+dirs            = "1.0"
 error-chain     = "0.11.0"
 rand            = "0.4.2"
 regex           = "1"

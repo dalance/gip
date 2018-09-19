@@ -1,11 +1,12 @@
+extern crate dirs;
 #[macro_use]
 extern crate error_chain;
 extern crate gip;
 #[macro_use]
 extern crate structopt;
 
+use dirs::home_dir;
 use gip::{Provider, ProviderAny, ProviderType};
-use std::env::home_dir;
 use std::fs::File;
 use std::io::Read;
 use structopt::{clap, StructOpt};
