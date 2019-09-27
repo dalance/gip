@@ -17,7 +17,9 @@ use structopt::{clap, StructOpt};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "gip")]
-#[structopt(raw(long_version = "option_env!(\"LONG_VERSION\").unwrap_or(env!(\"CARGO_PKG_VERSION\"))"))]
+#[structopt(raw(
+    long_version = "option_env!(\"LONG_VERSION\").unwrap_or(env!(\"CARGO_PKG_VERSION\"))"
+))]
 #[structopt(raw(setting = "clap::AppSettings::ColoredHelp"))]
 #[structopt(raw(setting = "clap::AppSettings::DeriveDisplayOrder"))]
 pub struct Opt {
@@ -30,18 +32,30 @@ pub struct Opt {
     pub v6: bool,
 
     /// Show by plane text ( default )
-    #[structopt(short = "p", long = "plane", conflicts_with = "show_string",
-                conflicts_with = "show_json")]
+    #[structopt(
+        short = "p",
+        long = "plane",
+        conflicts_with = "show_string",
+        conflicts_with = "show_json"
+    )]
     pub show_plane: bool,
 
     /// Show by plane text without line break
-    #[structopt(short = "s", long = "string", conflicts_with = "show_plane",
-                conflicts_with = "show_json")]
+    #[structopt(
+        short = "s",
+        long = "string",
+        conflicts_with = "show_plane",
+        conflicts_with = "show_json"
+    )]
     pub show_string: bool,
 
     /// Show by JSON
-    #[structopt(short = "j", long = "json", conflicts_with = "show_plane",
-                conflicts_with = "show_string")]
+    #[structopt(
+        short = "j",
+        long = "json",
+        conflicts_with = "show_plane",
+        conflicts_with = "show_string"
+    )]
     pub show_json: bool,
 
     /// Timeout per each provider by milliseconds
@@ -130,7 +144,8 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
     if opt.proxy.is_some() {
         let proxy_str = opt.proxy.clone().unwrap();
         let (host, port) = proxy_str.split_at(proxy_str.find(':').unwrap_or(0));
-        let port = port.trim_matches(':')
+        let port = port
+            .trim_matches(':')
             .parse::<u16>()
             .chain_err(|| format!("failed to parse proxy: {}", proxy_str))?;
         client.set_proxy(host, port);
@@ -221,5 +236,4 @@ mod tests {
         let opt = Opt::from_iter(args.iter());
         let _ = run_opt(&opt);
     }
-
 }

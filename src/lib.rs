@@ -72,9 +72,8 @@ extern crate time;
 extern crate toml;
 
 use core::str::FromStr;
-use hyper::Client;
 use hyper::header::Connection;
-use time::Tm;
+use hyper::Client;
 use rand::{thread_rng, Rng};
 use regex::Regex;
 use std::io::Read;
@@ -82,6 +81,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+use time::Tm;
 
 // -------------------------------------------------------------------------------------------------
 // Default providers
@@ -393,7 +393,8 @@ pub struct ProviderInfoList {
 impl ProviderInfoList {
     /// Load provider info from TOML string
     pub fn from_toml(s: &str) -> Result<ProviderInfoList> {
-        let t: ProviderInfoList = toml::from_str(s).chain_err(|| "failed to parse provider list")?;
+        let t: ProviderInfoList =
+            toml::from_str(s).chain_err(|| "failed to parse provider list")?;
         Ok(t)
     }
 }
@@ -644,7 +645,7 @@ impl Provider for ProviderJson {
                     let _ = res.read_to_string(&mut body);
                     if let Some(ref padding) = self.info.padding {
                         body = {
-                            let re = Regex::new( &format!( r"{:}\s*\((.*)\)", padding ) ).unwrap();
+                            let re = Regex::new(&format!(r"{:}\s*\((.*)\)", padding)).unwrap();
                             let cap = re.captures(&body).unwrap();
                             String::from(cap.get(1).unwrap().as_str())
                         };
@@ -767,9 +768,7 @@ impl ProviderDefaultV6 {
     pub fn new() -> Self {
         let mut p = ProviderAny::from_toml(&DEFAULT_TOML).unwrap();
         p.ptype = ProviderInfoType::IPv6;
-        ProviderDefaultV6 {
-            provider: p,
-        }
+        ProviderDefaultV6 { provider: p }
     }
 }
 
