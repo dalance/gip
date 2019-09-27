@@ -11,12 +11,6 @@ This crate can be used by adding `gip` to your dependencies in `Cargo.toml`.
 gip = "0.6.0"
 ```
 
-and this to your crate root:
-
-```rust
-extern crate gip;
-```
-
 # Example
 
 `Provider` trait provide `get_addr` function to check global IP address.
@@ -59,23 +53,14 @@ So `get_addr` successes unless all providers failed.
 
 */
 
-extern crate core;
-#[macro_use]
-extern crate error_chain;
-extern crate hyper;
-extern crate rand;
-extern crate regex;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate time;
-extern crate toml;
-
 use core::str::FromStr;
+use error_chain::{bail, error_chain};
 use hyper::header::Connection;
 use hyper::Client;
-use rand::{thread_rng, Rng};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use regex::Regex;
+use serde_derive::Deserialize;
 use std::io::Read;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
@@ -363,7 +348,7 @@ impl ProviderInfo {
     }
 
     /// Create `Provider` from this info
-    pub fn create(self) -> Box<Provider> {
+    pub fn create(self) -> Box<dyn Provider> {
         match self.format {
             ProviderInfoFormat::Plane => {
                 let mut p = Box::new(ProviderPlane::new());
@@ -406,7 +391,7 @@ impl ProviderInfoList {
 /// A `Provider` implementation to try multiple providers
 pub struct ProviderAny {
     /// Providers for checking global address
-    pub providers: Vec<Box<Provider>>,
+    pub providers: Vec<Box<dyn Provider>>,
     /// Provider type
     pub ptype: ProviderInfoType,
 }
@@ -438,7 +423,7 @@ impl ProviderAny {
 impl Provider for ProviderAny {
     fn get_addr(&mut self) -> Result<GlobalAddress> {
         let mut rng = thread_rng();
-        rng.shuffle(&mut self.providers);
+        self.providers.shuffle(&mut rng);
 
         let mut err: Option<Error> = None;
         for p in &mut self.providers {

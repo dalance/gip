@@ -1,11 +1,5 @@
-extern crate dirs;
-#[macro_use]
-extern crate error_chain;
-extern crate gip;
-#[macro_use]
-extern crate structopt;
-
 use dirs::home_dir;
+use error_chain::{error_chain, quick_main};
 use gip::{Provider, ProviderAny, ProviderInfoType};
 use std::fs::File;
 use std::io::Read;
@@ -17,11 +11,11 @@ use structopt::{clap, StructOpt};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "gip")]
-#[structopt(raw(
-    long_version = "option_env!(\"LONG_VERSION\").unwrap_or(env!(\"CARGO_PKG_VERSION\"))"
-))]
-#[structopt(raw(setting = "clap::AppSettings::ColoredHelp"))]
-#[structopt(raw(setting = "clap::AppSettings::DeriveDisplayOrder"))]
+#[structopt(
+    long_version(option_env!("LONG_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")))
+)]
+#[structopt(setting(clap::AppSettings::ColoredHelp))]
+#[structopt(setting(clap::AppSettings::DeriveDisplayOrder))]
 pub struct Opt {
     /// IPv4 address ( default )
     #[structopt(short = "4", long = "v4", conflicts_with = "v6")]

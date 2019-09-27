@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 description = "A library and command-line frontend to check global IP address"
 categories = ["command-line-utilities", "network-programming"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "dalance/gip" }
@@ -17,16 +18,16 @@ name = "gip"
 path = "src/gip.rs"
 
 [dependencies]
-dirs            = "1.0"
-error-chain     = "0.11.0"
-rand            = "0.4.2"
+dirs            = "2.0"
+error-chain     = "0.12.0"
+rand            = "0.7"
 regex           = "1"
 serde           = "1.0.33"
 serde_derive    = "1.0.33"
 serde_json      = "1.0.12"
-structopt       = "0.2.5"
+structopt       = "0.3"
 time            = "0.1.39"
-toml            = "0.4.5"
+toml            = "0.5"
 
 [dependencies.hyper]
 version  = "0.9.10"
@@ -41,4 +42,4 @@ pre-release-replacements   = [
     { file = "src/lib.rs", search = "gip = \"[a-z0-9\\.-]+\"", replace = "gip = \"{{version}}\"" },
 ]
 tag-message                = "Bump version to {{version}}"
-tag-prefix                 = "v"
+tag-prefix                 = ""
