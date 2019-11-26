@@ -1,6 +1,6 @@
 # gip
 
-[![Build Status](https://travis-ci.org/dalance/gip.svg?branch=master)](https://travis-ci.org/dalance/gip)
+[![Actions Status](https://github.com/dalance/gip/workflows/Regression/badge.svg)](https://github.com/dalance/gip/actions)
 [![Crates.io](https://img.shields.io/crates/v/gip.svg)](https://crates.io/crates/gip)
 [![Docs.rs](https://docs.rs/gip/badge.svg)](https://docs.rs/gip)
 [![codecov](https://codecov.io/gh/dalance/gip/branch/master/graph/badge.svg)](https://codecov.io/gh/dalance/gip)
