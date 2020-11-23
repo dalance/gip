@@ -639,6 +639,11 @@ impl Provider for ProviderJson {
                     let key = format!("/{}", self.info.key.join("/"));
                     let addr = json.pointer(&key).unwrap().as_str().unwrap();
 
+                    // strip IP address
+                    let re = Regex::new(r"([0-9a-zA-Z.:]+)").unwrap();
+                    let cap = re.captures(&addr).unwrap();
+                    let addr = cap.get(1).unwrap().as_str();
+
                     let ret = match self.info.ptype {
                         ProviderInfoType::IPv4 => {
                             let addr = Ipv4Addr::from_str(addr)
