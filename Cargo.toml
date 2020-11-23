@@ -19,7 +19,7 @@ path = "src/gip.rs"
 
 [dependencies]
 dirs            = "2.0"
-error-chain     = "0.12.0"
+error-chain     = "0.12.4"
 rand            = "0.7"
 regex           = "1"
 serde           = "1.0.33"
