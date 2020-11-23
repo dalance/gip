@@ -26,7 +26,7 @@ serde           = "1.0.117"
 serde_derive    = "1.0.117"
 serde_json      = "1.0.59"
 structopt       = "0.3"
-time            = "0.1.39"
+time            = "0.2.23"
 toml            = "0.5"
 
 [dependencies.hyper]
