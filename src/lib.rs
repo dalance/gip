@@ -55,11 +55,11 @@ So `get_addr` successes unless all providers failed.
 
 use chrono::{DateTime, Utc};
 use core::str::FromStr;
-use hyper::header::Connection;
-use hyper::Client;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use regex::Regex;
+use reqwest::blocking::ClientBuilder;
+use reqwest::Proxy;
 use serde_derive::Deserialize;
 use std::io::Read;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -143,8 +143,6 @@ pub enum Error {
     AddrParse(#[from] std::net::AddrParseError),
     #[error(transparent)]
     JsonParse(#[from] serde_json::Error),
-    #[error(transparent)]
-    Hyper(#[from] hyper::Error),
     #[error(transparent)]
     Toml(#[from] toml::de::Error),
     #[error("all providers failed to get address")]
@@ -463,10 +461,13 @@ impl Provider for ProviderPlane {
 
         thread::spawn(move || {
             let client = match proxy {
-                Some((x, y)) => Client::with_http_proxy(x, y),
-                None => Client::new(),
+                Some((x, y)) => ClientBuilder::new()
+                    .proxy(Proxy::all(&format!("http://{}:{}", x, y)).unwrap())
+                    .build()
+                    .unwrap(),
+                None => ClientBuilder::new().build().unwrap(),
             };
-            let res = client.get(&url).header(Connection::close()).send();
+            let res = client.get(&url).send();
             let _ = tx.send(res);
         });
 
@@ -572,10 +573,13 @@ impl Provider for ProviderJson {
 
         thread::spawn(move || {
             let client = match proxy {
-                Some((x, y)) => Client::with_http_proxy(x, y),
-                None => Client::new(),
+                Some((x, y)) => ClientBuilder::new()
+                    .proxy(Proxy::all(&format!("http://{}:{}", x, y)).unwrap())
+                    .build()
+                    .unwrap(),
+                None => ClientBuilder::new().build().unwrap(),
             };
-            let res = client.get(&url).header(Connection::close()).send();
+            let res = client.get(&url).send();
             let _ = tx.send(res);
         });
 
