@@ -18,9 +18,10 @@ name = "gip"
 path = "src/gip.rs"
 
 [dependencies]
+anyhow          = "1"
 chrono          = "0.4"
 dirs            = "3"
-error-chain     = "0.12"
+thiserror       = "1"
 rand            = "0.7"
 regex           = "1"
 serde           = "1"

@@ -1,5 +1,5 @@
+use anyhow::{Context, Error};
 use dirs::home_dir;
-use error_chain::{error_chain, quick_main};
 use gip::{Provider, ProviderAny, ProviderInfoType};
 use std::fs::File;
 use std::io::Read;
@@ -74,31 +74,19 @@ pub struct Opt {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Error
-// -------------------------------------------------------------------------------------------------
-
-error_chain! {
-    links {
-        Gip(::gip::Error, ::gip::ErrorKind);
-    }
-    foreign_links {
-        Io(::std::io::Error);
-        ParseInt(::std::num::ParseIntError);
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
 // Main
 // -------------------------------------------------------------------------------------------------
 
-quick_main!(run);
+fn main() -> Result<(), Error> {
+    run()
+}
 
-pub fn run() -> Result<()> {
+pub fn run() -> Result<(), Error> {
     let opt = Opt::from_args();
     run_opt(&opt)
 }
 
-pub fn run_opt(opt: &Opt) -> Result<()> {
+pub fn run_opt(opt: &Opt) -> Result<(), Error> {
     let giprc = match home_dir() {
         Some(mut p) => {
             p.push(".gip.toml");
@@ -114,7 +102,7 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
     let mut client = match giprc {
         Some(p) => {
             let mut f =
-                File::open(&p).chain_err(|| format!("failed to open {}", p.to_string_lossy()))?;
+                File::open(&p).context(format!("failed to open {}", p.to_string_lossy()))?;
             let mut s = String::new();
             let _ = f.read_to_string(&mut s);
             ProviderAny::from_toml(&s)?
@@ -141,7 +129,7 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
         let port = port
             .trim_matches(':')
             .parse::<u16>()
-            .chain_err(|| format!("failed to parse proxy: {}", proxy_str))?;
+            .context(format!("failed to parse proxy: {}", proxy_str))?;
         client.set_proxy(host, port);
     }
 

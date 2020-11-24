@@ -55,7 +55,6 @@ So `get_addr` successes unless all providers failed.
 
 use chrono::{DateTime, Utc};
 use core::str::FromStr;
-use error_chain::{bail, error_chain};
 use hyper::header::Connection;
 use hyper::Client;
 use rand::seq::SliceRandom;
@@ -67,6 +66,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+use thiserror::Error;
 
 // -------------------------------------------------------------------------------------------------
 // Default providers
@@ -137,31 +137,24 @@ pub static DEFAULT_TOML: &'static str = r#"
 // Error
 // -------------------------------------------------------------------------------------------------
 
-error_chain! {
-    foreign_links {
-        AddrParse(::std::net::AddrParseError);
-        JsonParse(::serde_json::Error);
-        Hyper(::hyper::Error);
-        Toml(::toml::de::Error);
-    }
-    errors {
-        AllProvidersFailed {
-            description("all providers failed")
-            display("all providers failed to get address")
-        }
-        ConnectionFailed(url: String) {
-            description("connection failed")
-            display("failed to connect ({})", url)
-        }
-        Timeout(url: String, timeout: usize) {
-            description("timeout")
-            display("failed by timeout to {} ({}ms)", url, timeout)
-        }
-        AddrParseFailed(addr: String) {
-            description("address parse failed")
-            display("failed to parse address ({})", addr)
-        }
-    }
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error(transparent)]
+    AddrParse(#[from] std::net::AddrParseError),
+    #[error(transparent)]
+    JsonParse(#[from] serde_json::Error),
+    #[error(transparent)]
+    Hyper(#[from] hyper::Error),
+    #[error(transparent)]
+    Toml(#[from] toml::de::Error),
+    #[error("all providers failed to get address")]
+    AllProvidersFailed { errors: Vec<Error> },
+    #[error("failed to connect ({url})")]
+    ConnectionFailed { url: String },
+    #[error("failed by timeout to {url} ({timeout}ms)")]
+    Timeout { url: String, timeout: usize },
+    #[error("failed to parse address ({addr})")]
+    AddrParseFailed { addr: String },
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -208,7 +201,7 @@ impl GlobalAddress {
 /// Provider describes types that can provide global address information
 pub trait Provider {
     /// Get global IP address
-    fn get_addr(&mut self) -> Result<GlobalAddress>;
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error>;
     /// Get provider name
     fn get_name(&self) -> String;
     /// Get provider type
@@ -224,7 +217,7 @@ pub trait Provider {
 // -------------------------------------------------------------------------------------------------
 
 /// Type of global address from provider
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 pub enum ProviderInfoType {
     IPv4,
     IPv6,
@@ -284,66 +277,36 @@ impl ProviderInfo {
     pub fn name(self, name: &str) -> Self {
         ProviderInfo {
             name: String::from(name),
-            ptype: self.ptype,
-            format: self.format,
-            url: self.url,
-            key: self.key,
-            padding: self.padding,
+            ..self
         }
     }
 
     pub fn ptype(self, ptype: ProviderInfoType) -> Self {
-        ProviderInfo {
-            name: self.name,
-            ptype: ptype,
-            format: self.format,
-            url: self.url,
-            key: self.key,
-            padding: self.padding,
-        }
+        ProviderInfo { ptype, ..self }
     }
 
     pub fn format(self, format: ProviderInfoFormat) -> Self {
-        ProviderInfo {
-            name: self.name,
-            ptype: self.ptype,
-            format: format,
-            url: self.url,
-            key: self.key,
-            padding: self.padding,
-        }
+        ProviderInfo { format, ..self }
     }
 
     pub fn url(self, url: &str) -> Self {
         ProviderInfo {
-            name: self.name,
-            ptype: self.ptype,
-            format: self.format,
             url: String::from(url),
-            key: self.key,
-            padding: self.padding,
+            ..self
         }
     }
 
     pub fn key(self, key: &Vec<String>) -> Self {
         ProviderInfo {
-            name: self.name,
-            ptype: self.ptype,
-            format: self.format,
-            url: self.url,
             key: key.clone(),
-            padding: self.padding,
+            ..self
         }
     }
 
     pub fn padding(self, padding: &str) -> Self {
         ProviderInfo {
-            name: self.name,
-            ptype: self.ptype,
-            format: self.format,
-            url: self.url,
-            key: self.key,
             padding: Some(String::from(padding)),
+            ..self
         }
     }
 
@@ -377,9 +340,8 @@ pub struct ProviderInfoList {
 
 impl ProviderInfoList {
     /// Load provider info from TOML string
-    pub fn from_toml(s: &str) -> Result<ProviderInfoList> {
-        let t: ProviderInfoList =
-            toml::from_str(s).chain_err(|| "failed to parse provider list")?;
+    pub fn from_toml(s: &str) -> Result<ProviderInfoList, Error> {
+        let t: ProviderInfoList = toml::from_str(s)?;
         Ok(t)
     }
 }
@@ -405,7 +367,7 @@ impl ProviderAny {
     }
 
     /// Load providers from TOML string
-    pub fn from_toml(s: &str) -> Result<Self> {
+    pub fn from_toml(s: &str) -> Result<Self, Error> {
         let list = ProviderInfoList::from_toml(s)?;
         let mut p = Vec::new();
         for l in list.providers {
@@ -421,27 +383,20 @@ impl ProviderAny {
 }
 
 impl Provider for ProviderAny {
-    fn get_addr(&mut self) -> Result<GlobalAddress> {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
         let mut rng = thread_rng();
         self.providers.shuffle(&mut rng);
 
-        let mut err: Option<Error> = None;
+        let mut errors = Vec::new();
         for p in &mut self.providers {
             if p.get_type() == self.ptype {
-                let ret = p.get_addr();
-                if ret.is_ok() {
-                    return ret;
-                } else {
-                    if err.is_some() {
-                        err = Some(err.unwrap().chain_err(|| ret.err().unwrap()));
-                    } else {
-                        err = Some(ret.err().unwrap());
-                    }
+                match p.get_addr() {
+                    Ok(ret) => return Ok(ret),
+                    Err(err) => errors.push(err),
                 }
             }
         }
-        let err = err.unwrap().chain_err(|| ErrorKind::AllProvidersFailed);
-        Err(err)
+        Err(Error::AllProvidersFailed { errors })
     }
 
     fn get_name(&self) -> String {
@@ -449,7 +404,7 @@ impl Provider for ProviderAny {
     }
 
     fn get_type(&self) -> ProviderInfoType {
-        self.ptype.clone()
+        self.ptype
     }
 
     fn set_timeout(&mut self, timeout: usize) {
@@ -500,7 +455,7 @@ impl ProviderPlane {
 }
 
 impl Provider for ProviderPlane {
-    fn get_addr(&mut self) -> Result<GlobalAddress> {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
         let (tx, rx) = mpsc::channel();
 
         let url = self.info.url.clone();
@@ -519,20 +474,21 @@ impl Provider for ProviderPlane {
         loop {
             match rx.try_recv() {
                 Ok(res) => {
-                    let mut res =
-                        res.chain_err(|| ErrorKind::ConnectionFailed(self.info.url.clone()))?;
+                    let mut res = res.map_err(|_| Error::ConnectionFailed {
+                        url: self.info.url.clone(),
+                    })?;
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
 
                     let ret = match self.info.ptype {
                         ProviderInfoType::IPv4 => {
                             let addr = Ipv4Addr::from_str(body.trim())
-                                .chain_err(|| ErrorKind::AddrParseFailed(body))?;
+                                .map_err(|_| Error::AddrParseFailed { addr: body })?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
                         ProviderInfoType::IPv6 => {
                             let addr = Ipv6Addr::from_str(body.trim())
-                                .chain_err(|| ErrorKind::AddrParseFailed(body))?;
+                                .map_err(|_| Error::AddrParseFailed { addr: body })?;
                             GlobalAddress::from_v6(addr, &self.info.name)
                         }
                     };
@@ -543,7 +499,10 @@ impl Provider for ProviderPlane {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::Timeout(self.info.url.clone(), self.timeout))
+                        return Err(Error::Timeout {
+                            url: self.info.url.clone(),
+                            timeout: self.timeout,
+                        });
                     }
                 }
             }
@@ -555,7 +514,7 @@ impl Provider for ProviderPlane {
     }
 
     fn get_type(&self) -> ProviderInfoType {
-        self.info.ptype.clone()
+        self.info.ptype
     }
 
     fn set_timeout(&mut self, timeout: usize) {
@@ -605,7 +564,7 @@ impl ProviderJson {
 }
 
 impl Provider for ProviderJson {
-    fn get_addr(&mut self) -> Result<GlobalAddress> {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
         let (tx, rx) = mpsc::channel();
 
         let url = self.info.url.clone();
@@ -624,8 +583,9 @@ impl Provider for ProviderJson {
         loop {
             match rx.try_recv() {
                 Ok(res) => {
-                    let mut res =
-                        res.chain_err(|| ErrorKind::ConnectionFailed(self.info.url.clone()))?;
+                    let mut res = res.map_err(|_| Error::ConnectionFailed {
+                        url: self.info.url.clone(),
+                    })?;
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
                     if let Some(ref padding) = self.info.padding {
@@ -646,13 +606,17 @@ impl Provider for ProviderJson {
 
                     let ret = match self.info.ptype {
                         ProviderInfoType::IPv4 => {
-                            let addr = Ipv4Addr::from_str(addr)
-                                .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
+                            let addr =
+                                Ipv4Addr::from_str(addr).map_err(|_| Error::AddrParseFailed {
+                                    addr: String::from(addr),
+                                })?;
                             GlobalAddress::from_v4(addr, &self.info.name)
                         }
                         ProviderInfoType::IPv6 => {
-                            let addr = Ipv6Addr::from_str(addr)
-                                .chain_err(|| ErrorKind::AddrParseFailed(String::from(addr)))?;
+                            let addr =
+                                Ipv6Addr::from_str(addr).map_err(|_| Error::AddrParseFailed {
+                                    addr: String::from(addr),
+                                })?;
                             GlobalAddress::from_v6(addr, &self.info.name)
                         }
                     };
@@ -663,7 +627,10 @@ impl Provider for ProviderJson {
                     thread::sleep(Duration::from_millis(100));
                     cnt += 1;
                     if cnt > self.timeout / 100 {
-                        bail!(ErrorKind::Timeout(self.info.url.clone(), self.timeout))
+                        return Err(Error::Timeout {
+                            url: self.info.url.clone(),
+                            timeout: self.timeout,
+                        });
                     }
                 }
             }
@@ -675,7 +642,7 @@ impl Provider for ProviderJson {
     }
 
     fn get_type(&self) -> ProviderInfoType {
-        self.info.ptype.clone()
+        self.info.ptype
     }
 
     fn set_timeout(&mut self, timeout: usize) {
@@ -713,7 +680,7 @@ impl ProviderDefaultV4 {
 }
 
 impl Provider for ProviderDefaultV4 {
-    fn get_addr(&mut self) -> Result<GlobalAddress> {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
         self.provider.get_addr()
     }
 
@@ -763,7 +730,7 @@ impl ProviderDefaultV6 {
 }
 
 impl Provider for ProviderDefaultV6 {
-    fn get_addr(&mut self) -> Result<GlobalAddress> {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
         self.provider.get_addr()
     }
 
