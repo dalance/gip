@@ -75,7 +75,7 @@ If you want to change providers, providers can be set by `$HOME/.gip.toml` like 
 **gip** is provided as Rust library.
 
 ```Cargo.toml
-gip = "0.6.0"
+gip = "0.7.0"
 ```
 
 [Documentation](https://docs.rs/gip)
