@@ -18,15 +18,15 @@ name = "gip"
 path = "src/gip.rs"
 
 [dependencies]
-dirs            = "3.0"
-error-chain     = "0.12.4"
+chrono          = "0.4"
+dirs            = "3"
+error-chain     = "0.12"
 rand            = "0.7"
 regex           = "1"
-serde           = "1.0.117"
-serde_derive    = "1.0.117"
-serde_json      = "1.0.59"
+serde           = "1"
+serde_derive    = "1"
+serde_json      = "1"
 structopt       = "0.3"
-time            = "0.1.39"
 toml            = "0.5"
 
 [dependencies.hyper]

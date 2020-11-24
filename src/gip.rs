@@ -155,7 +155,7 @@ pub fn run_opt(opt: &Opt) -> Result<()> {
     if opt.verbose {
         println!("IP Address: {}", addr_str);
         println!("Provider  : {}", addr.provider);
-        println!("Check Time: {}", addr.time.rfc822());
+        println!("Check Time: {}", addr.time);
     } else {
         if opt.show_string {
             print!("{}", addr_str);

@@ -53,6 +53,7 @@ So `get_addr` successes unless all providers failed.
 
 */
 
+use chrono::{DateTime, Utc};
 use core::str::FromStr;
 use error_chain::{bail, error_chain};
 use hyper::header::Connection;
@@ -66,7 +67,6 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use time::Tm;
 
 // -------------------------------------------------------------------------------------------------
 // Default providers
@@ -172,7 +172,7 @@ error_chain! {
 #[derive(Debug)]
 pub struct GlobalAddress {
     /// Address checking time
-    pub time: Tm,
+    pub time: DateTime<Utc>,
     /// Global IP address by IPv4
     pub v4addr: Option<Ipv4Addr>,
     /// Global IP address by IPv6
@@ -184,7 +184,7 @@ pub struct GlobalAddress {
 impl GlobalAddress {
     pub fn from_v4(addr: Ipv4Addr, provider: &str) -> Self {
         GlobalAddress {
-            time: time::now(),
+            time: Utc::now(),
             v4addr: Some(addr),
             v6addr: None,
             provider: String::from(provider),
@@ -193,7 +193,7 @@ impl GlobalAddress {
 
     pub fn from_v6(addr: Ipv6Addr, provider: &str) -> Self {
         GlobalAddress {
-            time: time::now(),
+            time: Utc::now(),
             v4addr: None,
             v6addr: Some(addr),
             provider: String::from(provider),
