@@ -45,11 +45,11 @@ So `get_addr` successes unless all providers failed.
 
 `ProviderDefaultV4` and `ProviderDefaultV6` use the built-in provider list ( defined as `DEFAULT_TOML` ):
 
-- [inet-ip.info](http://inet-ip.info) ( v4 only )
-- [ipify.org](http://ipify.org) ( v4 only )
 - [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
 - [ident.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
+- [opendns.com](https://www.opendns.com) ( v4 / v6 )
+- [akamai.net](https://developer.akamai.com) ( v4 / v6 )
 
 */
 
@@ -62,11 +62,14 @@ use reqwest::blocking::ClientBuilder;
 use reqwest::Proxy;
 use serde_derive::Deserialize;
 use std::io::Read;
+use std::net::SocketAddr;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use thiserror::Error;
+use trust_dns_resolver::config::{NameServerConfig, Protocol, ResolverConfig, ResolverOpts};
+use trust_dns_resolver::Resolver;
 
 // -------------------------------------------------------------------------------------------------
 // Default providers
@@ -75,62 +78,76 @@ use thiserror::Error;
 /// Built-in providers list
 pub static DEFAULT_TOML: &'static str = r#"
     [[providers]]
-        name    = "inet-ip.info"
-        ptype   = "IPv4"
-        format  = "Plane"
-        url     = "http://inet-ip.info/ip"
-        key     = []
+        name     = "ipv6-test"
+        ptype    = "IPv4"
+        protocol = "HttpPlane"
+        url      = "http://v4.ipv6-test.com/api/myip.php"
+        key      = []
 
     [[providers]]
-        name    = "ipify.org"
-        ptype   = "IPv4"
-        format  = "Plane"
-        url     = "http://api.ipify.org"
-        key     = []
+        name     = "ipv6-test"
+        ptype    = "IPv6"
+        protocol = "HttpPlane"
+        url      = "http://v6.ipv6-test.com/api/myip.php"
+        key      = []
 
     [[providers]]
-        name    = "ipv6-test"
-        ptype   = "IPv4"
-        format  = "Plane"
-        url     = "http://v4.ipv6-test.com/api/myip.php"
-        key     = []
+        name     = "ident.me"
+        ptype    = "IPv4"
+        protocol = "HttpPlane"
+        url      = "http://v4.ident.me/"
+        key      = []
 
     [[providers]]
-        name    = "ipv6-test"
-        ptype   = "IPv6"
-        format  = "Plane"
-        url     = "http://v6.ipv6-test.com/api/myip.php"
-        key     = []
+        name     = "ident.me"
+        ptype    = "IPv6"
+        protocol = "HttpPlane"
+        url      = "http://v6.ident.me/"
+        key      = []
 
     [[providers]]
-        name    = "ident.me"
-        ptype   = "IPv4"
-        format  = "Plane"
-        url     = "http://v4.ident.me/"
-        key     = []
+        name     = "test-ipv6"
+        ptype    = "IPv4"
+        protocol = "HttpJson"
+        url      = "http://ipv4.test-ipv6.com/ip/"
+        key      = ["ip"]
+        padding  = "callback"
 
     [[providers]]
-        name    = "ident.me"
-        ptype   = "IPv6"
-        format  = "Plane"
-        url     = "http://v6.ident.me/"
-        key     = []
+        name     = "test-ipv6"
+        ptype    = "IPv6"
+        protocol = "HttpJson"
+        url      = "http://ipv6.test-ipv6.com/ip/"
+        key      = ["ip"]
+        padding  = "callback"
 
     [[providers]]
-        name    = "test-ipv6"
-        ptype   = "IPv4"
-        format  = "Json"
-        url     = "http://ipv4.test-ipv6.com/ip/"
-        key     = ["ip"]
-        padding = "callback"
+        name     = "opendns.com"
+        ptype    = "IPv4"
+        protocol = "Dns"
+        url      = "myip.opendns.com@resolver1.opendns.com"
+        key      = []
 
     [[providers]]
-        name    = "test-ipv6"
-        ptype   = "IPv6"
-        format  = "Json"
-        url     = "http://ipv6.test-ipv6.com/ip/"
-        key     = ["ip"]
-        padding = "callback"
+        name     = "opendns.com"
+        ptype    = "IPv6"
+        protocol = "Dns"
+        url      = "myip.opendns.com@resolver1.opendns.com"
+        key      = []
+
+    [[providers]]
+        name     = "akamai.net"
+        ptype    = "IPv4"
+        protocol = "Dns"
+        url      = "whoami.akamai.net@ns1-1.akamaitech.net"
+        key      = []
+
+    [[providers]]
+        name     = "akamai.net"
+        ptype    = "IPv6"
+        protocol = "Dns"
+        url      = "whoami.akamai.net@ns1-1.akamaitech.net"
+        key      = []
 "#;
 
 // -------------------------------------------------------------------------------------------------
@@ -145,6 +162,10 @@ pub enum Error {
     JsonParse(#[from] serde_json::Error),
     #[error(transparent)]
     Toml(#[from] toml::de::Error),
+    #[error(transparent)]
+    Dns(#[from] trust_dns_resolver::error::ResolveError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
     #[error("all providers failed to get address")]
     AllProvidersFailed { errors: Vec<Error> },
     #[error("failed to connect ({url})")]
@@ -153,6 +174,8 @@ pub enum Error {
     Timeout { url: String, timeout: usize },
     #[error("failed to parse address ({addr})")]
     AddrParseFailed { addr: String },
+    #[error("failed to parse dns string ({url})")]
+    DnsParseFailed { url: String },
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -164,6 +187,8 @@ pub enum Error {
 pub struct GlobalAddress {
     /// Address checking time
     pub time: DateTime<Utc>,
+    /// Access latency
+    pub latency: Duration,
     /// Global IP address by IPv4
     pub v4addr: Option<Ipv4Addr>,
     /// Global IP address by IPv6
@@ -173,18 +198,20 @@ pub struct GlobalAddress {
 }
 
 impl GlobalAddress {
-    pub fn from_v4(addr: Ipv4Addr, provider: &str) -> Self {
+    pub fn from_v4(addr: Ipv4Addr, provider: &str, latency: Duration) -> Self {
         GlobalAddress {
             time: Utc::now(),
+            latency,
             v4addr: Some(addr),
             v6addr: None,
             provider: String::from(provider),
         }
     }
 
-    pub fn from_v6(addr: Ipv6Addr, provider: &str) -> Self {
+    pub fn from_v6(addr: Ipv6Addr, provider: &str, latency: Duration) -> Self {
         GlobalAddress {
             time: Utc::now(),
+            latency,
             v4addr: None,
             v6addr: Some(addr),
             provider: String::from(provider),
@@ -221,13 +248,15 @@ pub enum ProviderInfoType {
     IPv6,
 }
 
-/// Format of return value from provider
+/// Protocol of provider
 #[derive(Debug, Deserialize)]
-pub enum ProviderInfoFormat {
-    /// Plane text format
-    Plane,
-    /// JSON format
-    Json,
+pub enum ProviderInfoProtocol {
+    /// Plane text through HTTP
+    HttpPlane,
+    /// JSON through HTTP
+    HttpJson,
+    /// DNS
+    Dns,
 }
 
 /// Provider information
@@ -237,25 +266,27 @@ pub struct ProviderInfo {
     pub name: String,
     /// Provider type
     pub ptype: ProviderInfoType,
-    /// Provider format
-    pub format: ProviderInfoFormat,
+    /// Provider protocol
+    pub protocol: ProviderInfoProtocol,
     /// URL for GET
     pub url: String,
     /// Key for JSON format
     pub key: Vec<String>,
     /// Padding for JSON format
     pub padding: Option<String>,
+    /// Record for DNS
+    pub record: Option<String>,
 }
 
 /// Provider information.
 ///
 /// # Examples
 /// ```
-/// use gip::{ProviderInfo, ProviderInfoFormat, ProviderInfoType};
+/// use gip::{ProviderInfo, ProviderInfoProtocol, ProviderInfoType};
 /// let p = ProviderInfo::new()
 ///     .name("inet-ip.info")
 ///     .ptype(ProviderInfoType::IPv4)
-///     .format(ProviderInfoFormat::Plane)
+///     .protocol(ProviderInfoProtocol::HttpPlane)
 ///     .url("http://inet-ip.info/ip")
 ///     .key(&vec![]);
 /// println!("{:?}", p);
@@ -265,10 +296,11 @@ impl ProviderInfo {
         ProviderInfo {
             name: String::from(""),
             ptype: ProviderInfoType::IPv4,
-            format: ProviderInfoFormat::Plane,
+            protocol: ProviderInfoProtocol::HttpPlane,
             url: String::from(""),
             key: Vec::new(),
             padding: None,
+            record: None,
         }
     }
 
@@ -283,8 +315,8 @@ impl ProviderInfo {
         ProviderInfo { ptype, ..self }
     }
 
-    pub fn format(self, format: ProviderInfoFormat) -> Self {
-        ProviderInfo { format, ..self }
+    pub fn protocol(self, protocol: ProviderInfoProtocol) -> Self {
+        ProviderInfo { protocol, ..self }
     }
 
     pub fn url(self, url: &str) -> Self {
@@ -308,16 +340,28 @@ impl ProviderInfo {
         }
     }
 
+    pub fn record(self, record: &str) -> Self {
+        ProviderInfo {
+            record: Some(String::from(record)),
+            ..self
+        }
+    }
+
     /// Create `Provider` from this info
     pub fn create(self) -> Box<dyn Provider> {
-        match self.format {
-            ProviderInfoFormat::Plane => {
-                let mut p = Box::new(ProviderPlane::new());
+        match self.protocol {
+            ProviderInfoProtocol::HttpPlane => {
+                let mut p = Box::new(ProviderHttpPlane::new());
                 p.info = self;
                 p
             }
-            ProviderInfoFormat::Json => {
-                let mut p = Box::new(ProviderJson::new());
+            ProviderInfoProtocol::HttpJson => {
+                let mut p = Box::new(ProviderHttpJson::new());
+                p.info = self;
+                p
+            }
+            ProviderInfoProtocol::Dns => {
+                let mut p = Box::new(ProviderDns::new());
                 p.info = self;
                 p
             }
@@ -419,21 +463,21 @@ impl Provider for ProviderAny {
 }
 
 // -------------------------------------------------------------------------------------------------
-// ProviderPlane
+// ProviderHttpPlane
 // -------------------------------------------------------------------------------------------------
 
 /// A `Provider` implementation for checking global address by plane text format.
 ///
 /// # Examples
 /// ```
-/// use gip::{Provider, ProviderInfo, ProviderPlane};
+/// use gip::{Provider, ProviderInfo};
 /// let mut p = ProviderInfo::new()
 ///     .url("http://inet-ip.info/ip")
 ///     .create();
 /// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.v4addr );
 /// ```
-pub struct ProviderPlane {
+pub struct ProviderHttpPlane {
     /// Provider info
     pub info: ProviderInfo,
     /// Timeout
@@ -442,9 +486,9 @@ pub struct ProviderPlane {
     pub proxy: Option<(String, u16)>,
 }
 
-impl ProviderPlane {
+impl ProviderHttpPlane {
     pub fn new() -> Self {
-        ProviderPlane {
+        ProviderHttpPlane {
             info: ProviderInfo::new(),
             timeout: 1000,
             proxy: None,
@@ -452,8 +496,9 @@ impl ProviderPlane {
     }
 }
 
-impl Provider for ProviderPlane {
+impl Provider for ProviderHttpPlane {
     fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
+        let start = Instant::now();
         let (tx, rx) = mpsc::channel();
 
         let url = self.info.url.clone();
@@ -485,12 +530,12 @@ impl Provider for ProviderPlane {
                         ProviderInfoType::IPv4 => {
                             let addr = Ipv4Addr::from_str(body.trim())
                                 .map_err(|_| Error::AddrParseFailed { addr: body })?;
-                            GlobalAddress::from_v4(addr, &self.info.name)
+                            GlobalAddress::from_v4(addr, &self.info.name, start.elapsed())
                         }
                         ProviderInfoType::IPv6 => {
                             let addr = Ipv6Addr::from_str(body.trim())
                                 .map_err(|_| Error::AddrParseFailed { addr: body })?;
-                            GlobalAddress::from_v6(addr, &self.info.name)
+                            GlobalAddress::from_v6(addr, &self.info.name, start.elapsed())
                         }
                     };
 
@@ -528,16 +573,16 @@ impl Provider for ProviderPlane {
 }
 
 // -------------------------------------------------------------------------------------------------
-// ProviderJson
+// ProviderHttpJson
 // -------------------------------------------------------------------------------------------------
 
 /// A `Provider` implementation for checking global address by JSON format.
 ///
 /// # Examples
 /// ```
-/// use gip::{ProviderInfo, ProviderInfoFormat};
+/// use gip::{ProviderInfo, ProviderInfoProtocol};
 /// let mut p = ProviderInfo::new()
-///     .format(ProviderInfoFormat::Json)
+///     .protocol(ProviderInfoProtocol::HttpJson)
 ///     .url("http://ipv4.test-ipv6.com/ip/")
 ///     .key(&vec![String::from("ip")])
 ///     .padding("callback")
@@ -545,7 +590,7 @@ impl Provider for ProviderPlane {
 /// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.v4addr );
 /// ```
-pub struct ProviderJson {
+pub struct ProviderHttpJson {
     /// Provider info
     pub info: ProviderInfo,
     /// Timeout
@@ -554,9 +599,9 @@ pub struct ProviderJson {
     pub proxy: Option<(String, u16)>,
 }
 
-impl ProviderJson {
+impl ProviderHttpJson {
     pub fn new() -> Self {
-        ProviderJson {
+        ProviderHttpJson {
             info: ProviderInfo::new(),
             timeout: 1000,
             proxy: None,
@@ -564,8 +609,9 @@ impl ProviderJson {
     }
 }
 
-impl Provider for ProviderJson {
+impl Provider for ProviderHttpJson {
     fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
+        let start = Instant::now();
         let (tx, rx) = mpsc::channel();
 
         let url = self.info.url.clone();
@@ -614,14 +660,14 @@ impl Provider for ProviderJson {
                                 Ipv4Addr::from_str(addr).map_err(|_| Error::AddrParseFailed {
                                     addr: String::from(addr),
                                 })?;
-                            GlobalAddress::from_v4(addr, &self.info.name)
+                            GlobalAddress::from_v4(addr, &self.info.name, start.elapsed())
                         }
                         ProviderInfoType::IPv6 => {
                             let addr =
                                 Ipv6Addr::from_str(addr).map_err(|_| Error::AddrParseFailed {
                                     addr: String::from(addr),
                                 })?;
-                            GlobalAddress::from_v6(addr, &self.info.name)
+                            GlobalAddress::from_v6(addr, &self.info.name, start.elapsed())
                         }
                     };
 
@@ -656,6 +702,111 @@ impl Provider for ProviderJson {
     fn set_proxy(&mut self, host: &str, port: u16) {
         self.proxy = Some((String::from(host), port))
     }
+}
+
+// -------------------------------------------------------------------------------------------------
+// ProviderDns
+// -------------------------------------------------------------------------------------------------
+
+/// A `Provider` implementation for checking global address through DNS.
+/// `url` should be `[request domain name]@[resolver address]`.
+///
+/// # Examples
+/// ```
+/// use gip::{Provider, ProviderInfo, ProviderInfoProtocol};
+/// let mut p = ProviderInfo::new()
+///     .protocol(ProviderInfoProtocol::Dns)
+///     .url("myip.opendns.com@resolver1.opendns.com")
+///     .create();
+/// let addr = p.get_addr().unwrap();
+/// println!( "{:?}", addr.v4addr );
+/// ```
+pub struct ProviderDns {
+    /// Provider info
+    pub info: ProviderInfo,
+    /// Timeout
+    pub timeout: usize,
+}
+
+impl ProviderDns {
+    pub fn new() -> Self {
+        ProviderDns {
+            info: ProviderInfo::new(),
+            timeout: 1000,
+        }
+    }
+}
+
+impl Provider for ProviderDns {
+    fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
+        let start = Instant::now();
+        let mut opts = ResolverOpts::default();
+        opts.timeout = Duration::from_millis(self.timeout as u64);
+
+        let resolver = Resolver::new(ResolverConfig::default(), opts)?;
+
+        let (req, srv) = if let Some(x) = self.info.url.find('@') {
+            let (req, srv) = self.info.url.split_at(x);
+            (req, &srv[1..])
+        } else {
+            return Err(Error::DnsParseFailed {
+                url: self.info.url.clone(),
+            });
+        };
+
+        let srv = resolver.lookup_ip(srv)?;
+        let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
+            url: self.info.url.clone(),
+        })?;
+
+        let ns = NameServerConfig {
+            socket_addr: SocketAddr::new(srv, 53),
+            protocol: Protocol::Udp,
+            tls_dns_name: None,
+        };
+        let mut config = ResolverConfig::new();
+        config.add_name_server(ns);
+        let resolver = Resolver::new(config, opts)?;
+
+        match self.info.ptype {
+            ProviderInfoType::IPv4 => {
+                let addr = resolver.ipv4_lookup(req)?;
+                let addr = addr.iter().next().ok_or_else(|| Error::ConnectionFailed {
+                    url: self.info.url.clone(),
+                })?;
+                Ok(GlobalAddress::from_v4(
+                    *addr,
+                    &self.info.name,
+                    start.elapsed(),
+                ))
+            }
+            ProviderInfoType::IPv6 => {
+                let addr = resolver.ipv6_lookup(req)?;
+                let addr = addr.iter().next().ok_or_else(|| Error::ConnectionFailed {
+                    url: self.info.url.clone(),
+                })?;
+                Ok(GlobalAddress::from_v6(
+                    *addr,
+                    &self.info.name,
+                    start.elapsed(),
+                ))
+            }
+        }
+    }
+
+    fn get_name(&self) -> String {
+        self.info.name.clone()
+    }
+
+    fn get_type(&self) -> ProviderInfoType {
+        self.info.ptype
+    }
+
+    fn set_timeout(&mut self, timeout: usize) {
+        self.timeout = timeout
+    }
+
+    fn set_proxy(&mut self, _host: &str, _port: u16) {}
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -768,7 +919,7 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .name("inet-ip.info")
             .ptype(ProviderInfoType::IPv4)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://inet-ip.info/ip")
             .create();
         p.set_timeout(2000);
@@ -782,7 +933,7 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .name("ipify.org")
             .ptype(ProviderInfoType::IPv4)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://api.ipify.org")
             .create();
         p.set_timeout(2000);
@@ -796,7 +947,7 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .name("ipv6-test.com")
             .ptype(ProviderInfoType::IPv4)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v4.ipv6-test.com/api/myip.php")
             .create();
         p.set_timeout(2000);
@@ -810,7 +961,7 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .name("ident.me")
             .ptype(ProviderInfoType::IPv4)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v4.ident.me")
             .create();
         p.set_timeout(2000);
@@ -824,10 +975,38 @@ mod tests_v4 {
         let mut p = ProviderInfo::new()
             .name("test-ipv6.com")
             .ptype(ProviderInfoType::IPv4)
-            .format(ProviderInfoFormat::Json)
+            .protocol(ProviderInfoProtocol::HttpJson)
             .url("http://ipv4.test-ipv6.com/ip/")
             .key(&vec![String::from("ip")])
             .padding("callback")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr().unwrap();
+        assert!(addr.v4addr.is_some());
+        assert!(!addr.v4addr.unwrap().is_private());
+    }
+
+    #[test]
+    fn test_opendns() {
+        let mut p = ProviderInfo::new()
+            .name("opendns.com")
+            .ptype(ProviderInfoType::IPv4)
+            .protocol(ProviderInfoProtocol::Dns)
+            .url("myip.opendns.com@resolver1.opendns.com")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr().unwrap();
+        assert!(addr.v4addr.is_some());
+        assert!(!addr.v4addr.unwrap().is_private());
+    }
+
+    #[test]
+    fn test_akamai() {
+        let mut p = ProviderInfo::new()
+            .name("akamai.net")
+            .ptype(ProviderInfoType::IPv4)
+            .protocol(ProviderInfoProtocol::Dns)
+            .url("whoami.akamai.net@ns1-1.akamaitech.net")
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr().unwrap();
@@ -863,7 +1042,7 @@ mod tests_v6 {
     fn ipv6_test() {
         let mut p = ProviderInfo::new()
             .ptype(ProviderInfoType::IPv6)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.ipv6-test.com/api/myip.php")
             .create();
         p.set_timeout(2000);
@@ -878,7 +1057,7 @@ mod tests_v6 {
     fn ident_me() {
         let mut p = ProviderInfo::new()
             .ptype(ProviderInfoType::IPv6)
-            .format(ProviderInfoFormat::Plane)
+            .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.ident.me")
             .create();
         p.set_timeout(2000);
@@ -894,10 +1073,42 @@ mod tests_v6 {
         let mut p = ProviderInfo::new()
             .name("test-ipv6.com")
             .ptype(ProviderInfoType::IPv6)
-            .format(ProviderInfoFormat::Json)
+            .protocol(ProviderInfoProtocol::HttpJson)
             .url("http://ipv6.test-ipv6.com/ip/")
             .key(&vec![String::from("ip")])
             .padding("callback")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr();
+        match addr {
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
+        }
+    }
+
+    #[test]
+    fn test_opendns() {
+        let mut p = ProviderInfo::new()
+            .name("opendns.com")
+            .ptype(ProviderInfoType::IPv6)
+            .protocol(ProviderInfoProtocol::Dns)
+            .url("myip.opendns.com@resolver1.opendns.com")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr();
+        match addr {
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
+        }
+    }
+
+    #[test]
+    fn test_akamai() {
+        let mut p = ProviderInfo::new()
+            .name("opendns.com")
+            .ptype(ProviderInfoType::IPv6)
+            .protocol(ProviderInfoProtocol::Dns)
+            .url("whoami.akamai.net@ns1-1.akamaitech.net")
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr();

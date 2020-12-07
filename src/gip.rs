@@ -144,6 +144,7 @@ pub fn run_opt(opt: &Opt) -> Result<(), Error> {
         println!("IP Address: {}", addr_str);
         println!("Provider  : {}", addr.provider);
         println!("Check Time: {}", addr.time);
+        println!("Latency   : {}ms", addr.latency.as_millis());
     } else {
         if opt.show_string {
             print!("{}", addr_str);

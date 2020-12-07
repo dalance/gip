@@ -46,28 +46,36 @@ OPTIONS:
 ## Providers
 Currently built-in service providers are the followings.
 
-- [inet-ip.info](http://inet-ip.info) ( v4 only )
-- [ipify.org](http://ipify.org) ( v4 only )
 - [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
 - [ident.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
+- [opendns.com](https://www.opendns.com) ( v4 / v6 )
+- [akamai.net](https://developer.akamai.com) ( v4 / v6 )
 
 If you want to change providers, providers can be set by `$HOME/.gip.toml` like the following.
 
 ```
 [[providers]]
-    name    = "inet-ip.info"
-    ptype   = "IPv4"
-    format  = "Plane"
-    url     = "http://inet-ip.info/ip"
-    key     = []
+    name     = "ident.me"
+    ptype    = "IPv4"
+    protocol = "HttpPlane"
+    url      = "http://v4.ident.me/"
+    key      = []
 
 [[providers]]
-    name    = "httpbin.org"
-    ptype   = "IPv4"
-    format  = "Json"
-    url     = "http://httpbin.org/ip"
-    key     = ["origin"]
+    name     = "test-ipv6"
+    ptype    = "IPv4"
+    protocol = "HttpJson"
+    url      = "http://ipv4.test-ipv6.com/ip/"
+    key      = ["ip"]
+    padding  = "callback"
+
+[[providers]]
+    name     = "opendns.com"
+    ptype    = "IPv4"
+    protocol = "Dns"
+    url      = "myip.opendns.com@resolver1.opendns.com"
+    key      = []
 ```
 
 ## Library
