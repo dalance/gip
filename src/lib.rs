@@ -49,7 +49,7 @@ So `get_addr` successes unless all providers failed.
 - [ident.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 - [opendns.com](https://www.opendns.com) ( v4 / v6 )
-- [akamai.net](https://developer.akamai.com) ( v4 / v6 )
+- [akamai.com](https://developer.akamai.com) ( v4 / v6 )
 
 */
 
@@ -136,17 +136,24 @@ pub static DEFAULT_TOML: &'static str = r#"
         key      = []
 
     [[providers]]
-        name     = "akamai.net"
+        name     = "akamai.com"
         ptype    = "IPv4"
         protocol = "Dns"
-        url      = "whoami.akamai.net@ns1-1.akamaitech.net"
+        url      = "whoami.akamai.com@ns1-1.akamaitech.net"
         key      = []
 
     [[providers]]
-        name     = "akamai.net"
+        name     = "akamai.com"
+        ptype    = "IPv4"
+        protocol = "HttpPlane"
+        url      = "http://whatismyip.akamai.com"
+        key      = []
+
+    [[providers]]
+        name     = "akamai.com"
         ptype    = "IPv6"
-        protocol = "Dns"
-        url      = "whoami.akamai.net@ns1-1.akamaitech.net"
+        protocol = "HttpPlane"
+        url      = "http://ipv6.whatismyip.akamai.com"
         key      = []
 "#;
 
@@ -1105,22 +1112,6 @@ mod tests_v6 {
             .ptype(ProviderInfoType::IPv6)
             .protocol(ProviderInfoProtocol::Dns)
             .url("myip.opendns.com@resolver1.opendns.com")
-            .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr();
-        match addr {
-            Ok(x) => assert!(x.v6addr.is_some()),
-            Err(_) => (),
-        }
-    }
-
-    #[test]
-    fn test_akamai() {
-        let mut p = ProviderInfo::new()
-            .name("opendns.com")
-            .ptype(ProviderInfoType::IPv6)
-            .protocol(ProviderInfoProtocol::Dns)
-            .url("whoami.akamai.net@ns1-1.akamaitech.net")
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr();

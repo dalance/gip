@@ -50,7 +50,7 @@ Currently built-in service providers are the followings.
 - [ident.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 - [opendns.com](https://www.opendns.com) ( v4 / v6 )
-- [akamai.net](https://developer.akamai.com) ( v4 / v6 )
+- [akamai.com](https://developer.akamai.com) ( v4 / v6 )
 
 If you want to change providers, providers can be set by `$HOME/.gip.toml` like the following.
 
