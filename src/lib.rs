@@ -63,7 +63,7 @@ use reqwest::Proxy;
 use serde_derive::Deserialize;
 use std::io::Read;
 use std::net::SocketAddr;
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -754,10 +754,22 @@ impl Provider for ProviderDns {
             });
         };
 
-        let srv = resolver.lookup_ip(srv)?;
-        let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
-            url: self.info.url.clone(),
-        })?;
+        let srv = match self.info.ptype {
+            ProviderInfoType::IPv4 => {
+                let srv = resolver.ipv4_lookup(srv)?;
+                let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
+                    url: self.info.url.clone(),
+                })?;
+                IpAddr::V4(*srv)
+            }
+            ProviderInfoType::IPv6 => {
+                let srv = resolver.ipv6_lookup(srv)?;
+                let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
+                    url: self.info.url.clone(),
+                })?;
+                IpAddr::V6(*srv)
+            }
+        };
 
         let ns = NameServerConfig {
             socket_addr: SocketAddr::new(srv, 53),
