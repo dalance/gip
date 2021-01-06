@@ -782,6 +782,7 @@ impl Provider for ProviderDns {
             socket_addr: SocketAddr::new(srv, 53),
             protocol: Protocol::Udp,
             tls_dns_name: None,
+            trust_nx_responses: false,
         };
         let mut config = ResolverConfig::new();
         config.add_name_server(ns);
