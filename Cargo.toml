@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 description = "A library and command-line frontend to check global IP address"
 categories = ["command-line-utilities", "network-programming"]
-edition = "2018"
+edition = "2021"
 
 [badges]
 travis-ci = { repository = "dalance/gip" }
