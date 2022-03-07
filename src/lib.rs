@@ -46,7 +46,7 @@ So `get_addr` successes unless all providers failed.
 `ProviderDefaultV4` and `ProviderDefaultV6` use the built-in provider list ( defined as `DEFAULT_TOML` ):
 
 - [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
-- [ident.me](http://api.ident.me) ( v4 / v6 )
+- [ident.me/tnedi.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 - [opendns.com](https://www.opendns.com) ( v4 / v6 )
 - [akamai.com](https://developer.akamai.com) ( v4 / v6 )
@@ -103,6 +103,20 @@ pub static DEFAULT_TOML: &'static str = r#"
         ptype    = "IPv6"
         protocol = "HttpPlane"
         url      = "http://v6.ident.me/"
+        key      = []
+
+    [[providers]]
+        name     = "tnedi.me"
+        ptype    = "IPv4"
+        protocol = "HttpPlane"
+        url      = "http://v4.tnedi.me/"
+        key      = []
+
+    [[providers]]
+        name     = "tnedi.me"
+        ptype    = "IPv6"
+        protocol = "HttpPlane"
+        url      = "http://v6.tnedi.me/"
         key      = []
 
     [[providers]]
@@ -991,6 +1005,20 @@ mod tests_v4 {
     }
 
     #[test]
+    fn tnedi_me() {
+        let mut p = ProviderInfo::new()
+            .name("tnedi.me")
+            .ptype(ProviderInfoType::IPv4)
+            .protocol(ProviderInfoProtocol::HttpPlane)
+            .url("http://v4.tnedi.me")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr().unwrap();
+        assert!(addr.v4addr.is_some());
+        assert!(!addr.v4addr.unwrap().is_private());
+    }
+
+    #[test]
     fn test_ipv6() {
         let mut p = ProviderInfo::new()
             .name("test-ipv6.com")
@@ -1079,6 +1107,21 @@ mod tests_v6 {
             .ptype(ProviderInfoType::IPv6)
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.ident.me")
+            .create();
+        p.set_timeout(2000);
+        let addr = p.get_addr();
+        match addr {
+            Ok(x) => assert!(x.v6addr.is_some()),
+            Err(_) => (),
+        }
+    }
+
+    #[test]
+    fn tnedi_me() {
+        let mut p = ProviderInfo::new()
+            .ptype(ProviderInfoType::IPv6)
+            .protocol(ProviderInfoProtocol::HttpPlane)
+            .url("http://v6.tnedi.me")
             .create();
         p.set_timeout(2000);
         let addr = p.get_addr();
