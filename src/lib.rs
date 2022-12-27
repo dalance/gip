@@ -60,7 +60,7 @@ use rand::thread_rng;
 use regex::Regex;
 use reqwest::blocking::ClientBuilder;
 use reqwest::Proxy;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
