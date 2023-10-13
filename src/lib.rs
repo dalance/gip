@@ -781,14 +781,14 @@ impl Provider for ProviderDns {
                 let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
                     url: self.info.url.clone(),
                 })?;
-                IpAddr::V4(*srv)
+                IpAddr::V4(**srv)
             }
             ProviderInfoType::IPv6 => {
                 let srv = resolver.ipv6_lookup(srv)?;
                 let srv = srv.iter().next().ok_or_else(|| Error::ConnectionFailed {
                     url: self.info.url.clone(),
                 })?;
-                IpAddr::V6(*srv)
+                IpAddr::V6(**srv)
             }
         };
 
@@ -796,7 +796,8 @@ impl Provider for ProviderDns {
             socket_addr: SocketAddr::new(srv, 53),
             protocol: Protocol::Udp,
             tls_dns_name: None,
-            trust_nx_responses: false,
+            trust_negative_responses: false,
+            bind_addr: None,
         };
         let mut config = ResolverConfig::new();
         config.add_name_server(ns);
@@ -809,7 +810,7 @@ impl Provider for ProviderDns {
                     url: self.info.url.clone(),
                 })?;
                 Ok(GlobalAddress::from_v4(
-                    *addr,
+                    **addr,
                     &self.info.name,
                     start.elapsed(),
                 ))
@@ -820,7 +821,7 @@ impl Provider for ProviderDns {
                     url: self.info.url.clone(),
                 })?;
                 Ok(GlobalAddress::from_v6(
-                    *addr,
+                    **addr,
                     &self.info.name,
                     start.elapsed(),
                 ))
