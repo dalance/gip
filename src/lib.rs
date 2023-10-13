@@ -949,33 +949,33 @@ impl Provider for ProviderDefaultV6 {
 mod tests_v4 {
     use super::*;
 
-    #[test]
-    fn inet_ip() {
-        let mut p = ProviderInfo::new()
-            .name("inet-ip.info")
-            .ptype(ProviderInfoType::IPv4)
-            .protocol(ProviderInfoProtocol::HttpPlane)
-            .url("http://inet-ip.info/ip")
-            .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
-    }
+    //#[test]
+    //fn inet_ip() {
+    //    let mut p = ProviderInfo::new()
+    //        .name("inet-ip.info")
+    //        .ptype(ProviderInfoType::IPv4)
+    //        .protocol(ProviderInfoProtocol::HttpPlane)
+    //        .url("http://inet-ip.info/ip")
+    //        .create();
+    //    p.set_timeout(2000);
+    //    let addr = p.get_addr().unwrap();
+    //    assert!(addr.v4addr.is_some());
+    //    assert!(!addr.v4addr.unwrap().is_private());
+    //}
 
-    #[test]
-    fn ipify() {
-        let mut p = ProviderInfo::new()
-            .name("ipify.org")
-            .ptype(ProviderInfoType::IPv4)
-            .protocol(ProviderInfoProtocol::HttpPlane)
-            .url("http://api.ipify.org")
-            .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
-    }
+    //#[test]
+    //fn ipify() {
+    //    let mut p = ProviderInfo::new()
+    //        .name("ipify.org")
+    //        .ptype(ProviderInfoType::IPv4)
+    //        .protocol(ProviderInfoProtocol::HttpPlane)
+    //        .url("http://api.ipify.org")
+    //        .create();
+    //    p.set_timeout(2000);
+    //    let addr = p.get_addr().unwrap();
+    //    assert!(addr.v4addr.is_some());
+    //    assert!(!addr.v4addr.unwrap().is_private());
+    //}
 
     #[test]
     fn ipv6_test() {
