@@ -55,8 +55,8 @@ So `get_addr` successes unless all providers failed.
 
 use chrono::{DateTime, Utc};
 use core::str::FromStr;
+use rand::rng;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 use regex::Regex;
 use reqwest::blocking::ClientBuilder;
 use reqwest::Proxy;
@@ -447,7 +447,7 @@ impl ProviderAny {
 
 impl Provider for ProviderAny {
     fn get_addr(&mut self) -> Result<GlobalAddress, Error> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         self.providers.shuffle(&mut rng);
 
         let mut errors = Vec::new();
