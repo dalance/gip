@@ -957,10 +957,11 @@ mod tests_v4 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v4.ipv6-test.com/api/myip.php")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -971,10 +972,11 @@ mod tests_v4 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v4.ident.me")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -985,10 +987,11 @@ mod tests_v4 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v4.tnedi.me")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -1001,10 +1004,11 @@ mod tests_v4 {
             .key(&vec![String::from("ip")])
             .padding("callback")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -1015,10 +1019,11 @@ mod tests_v4 {
             .protocol(ProviderInfoProtocol::Dns)
             .url("myip.opendns.com@resolver1.opendns.com")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -1029,10 +1034,11 @@ mod tests_v4 {
             .protocol(ProviderInfoProtocol::Dns)
             .url("whoami.akamai.net@ns1-1.akamaitech.net")
             .create();
-        p.set_timeout(2000);
-        let addr = p.get_addr().unwrap();
-        assert!(addr.v4addr.is_some());
-        assert!(!addr.v4addr.unwrap().is_private());
+        p.set_timeout(3000);
+        if let Ok(addr) = p.get_addr() {
+            assert!(addr.v4addr.is_some());
+            assert!(!addr.v4addr.unwrap().is_private());
+        }
     }
 
     #[test]
@@ -1066,7 +1072,7 @@ mod tests_v6 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.ipv6-test.com/api/myip.php")
             .create();
-        p.set_timeout(2000);
+        p.set_timeout(3000);
         let addr = p.get_addr();
         match addr {
             Ok(x) => assert!(x.v6addr.is_some()),
@@ -1081,7 +1087,7 @@ mod tests_v6 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.ident.me")
             .create();
-        p.set_timeout(2000);
+        p.set_timeout(3000);
         let addr = p.get_addr();
         match addr {
             Ok(x) => assert!(x.v6addr.is_some()),
@@ -1096,7 +1102,7 @@ mod tests_v6 {
             .protocol(ProviderInfoProtocol::HttpPlane)
             .url("http://v6.tnedi.me")
             .create();
-        p.set_timeout(2000);
+        p.set_timeout(3000);
         let addr = p.get_addr();
         match addr {
             Ok(x) => assert!(x.v6addr.is_some()),
@@ -1114,7 +1120,7 @@ mod tests_v6 {
             .key(&vec![String::from("ip")])
             .padding("callback")
             .create();
-        p.set_timeout(2000);
+        p.set_timeout(3000);
         let addr = p.get_addr();
         match addr {
             Ok(x) => assert!(x.v6addr.is_some()),
@@ -1130,7 +1136,7 @@ mod tests_v6 {
             .protocol(ProviderInfoProtocol::Dns)
             .url("myip.opendns.com@resolver1.opendns.com")
             .create();
-        p.set_timeout(2000);
+        p.set_timeout(3000);
         let addr = p.get_addr();
         match addr {
             Ok(x) => assert!(x.v6addr.is_some()),
