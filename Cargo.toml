@@ -27,11 +27,11 @@ regex              = "1"
 serde              = {version = "1.0", features = ["derive"]}
 serde_json         = "1"
 structopt          = "0.3"
-toml               = "1.0"
+toml               = "1.1"
 trust-dns-resolver = "0.23"
 
 [dependencies.reqwest]
-version  = "0.12"
+version  = "0.13"
 features = ["blocking"]
 
 [package.metadata.release]
