@@ -660,19 +660,32 @@ impl Provider for ProviderHttpJson {
                     let mut body = String::new();
                     let _ = res.read_to_string(&mut body);
                     if let Some(ref padding) = self.info.padding {
-                        body = {
-                            let re = Regex::new(&format!(r"{:}\s*\((.*)\)", padding)).unwrap();
-                            let cap = re.captures(&body).unwrap();
-                            String::from(cap.get(1).unwrap().as_str())
-                        };
+                        let re = Regex::new(&format!(r"{:}\s*\((.*)\)", padding)).unwrap();
+                        let cap = re.captures(&body).ok_or_else(|| Error::ConnectionFailed {
+                            url: self.info.url.clone(),
+                        })?;
+                        body = String::from(
+                            cap.get(1)
+                                .ok_or_else(|| Error::ConnectionFailed {
+                                    url: self.info.url.clone(),
+                                })?
+                                .as_str(),
+                        );
                     }
                     let json: serde_json::Value = serde_json::from_str(&body)?;
                     let key = format!("/{}", self.info.key.join("/"));
-                    let addr = json.pointer(&key).unwrap().as_str().unwrap();
+                    let addr = json
+                        .pointer(&key)
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| Error::ConnectionFailed {
+                            url: self.info.url.clone(),
+                        })?;
 
                     // strip IP address
                     let re = Regex::new(r"([0-9a-zA-Z.:]+)").unwrap();
-                    let cap = re.captures(&addr).unwrap();
+                    let cap = re.captures(addr).ok_or_else(|| Error::ConnectionFailed {
+                        url: self.info.url.clone(),
+                    })?;
                     let addr = cap.get(1).unwrap().as_str();
 
                     let ret = match self.info.ptype {
