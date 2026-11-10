@@ -45,7 +45,6 @@ So `get_addr` successes unless all providers failed.
 
 `ProviderDefaultV4` and `ProviderDefaultV6` use the built-in provider list ( defined as `DEFAULT_TOML` ):
 
-- [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
 - [ident.me/tnedi.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 - [opendns.com](https://www.opendns.com) ( v4 / v6 )
@@ -77,20 +76,6 @@ use trust_dns_resolver::Resolver;
 
 /// Built-in providers list
 pub static DEFAULT_TOML: &'static str = r#"
-    [[providers]]
-        name     = "ipv6-test"
-        ptype    = "IPv4"
-        protocol = "HttpPlane"
-        url      = "http://v4.ipv6-test.com/api/myip.php"
-        key      = []
-
-    [[providers]]
-        name     = "ipv6-test"
-        ptype    = "IPv6"
-        protocol = "HttpPlane"
-        url      = "http://v6.ipv6-test.com/api/myip.php"
-        key      = []
-
     [[providers]]
         name     = "ident.me"
         ptype    = "IPv4"
@@ -490,10 +475,10 @@ impl Provider for ProviderAny {
 /// A `Provider` implementation for checking global address by plane text format.
 ///
 /// # Examples
-/// ```
+/// ```no_run
 /// use gip::{Provider, ProviderInfo};
 /// let mut p = ProviderInfo::new()
-///     .url("http://v4.ipv6-test.com/api/myip.php")
+///     .url("http://inet-ip.info/ip")
 ///     .create();
 /// let addr = p.get_addr().unwrap();
 /// println!( "{:?}", addr.v4addr );
@@ -600,7 +585,7 @@ impl Provider for ProviderHttpPlane {
 /// A `Provider` implementation for checking global address by JSON format.
 ///
 /// # Examples
-/// ```
+/// ```no_run
 /// use gip::{ProviderInfo, ProviderInfoProtocol};
 /// let mut p = ProviderInfo::new()
 ///     .protocol(ProviderInfoProtocol::HttpJson)
@@ -746,7 +731,7 @@ impl Provider for ProviderHttpJson {
 /// `url` should be `[request domain name]@[resolver address]`.
 ///
 /// # Examples
-/// ```
+/// ```no_run
 /// use gip::{Provider, ProviderInfo, ProviderInfoProtocol};
 /// let mut p = ProviderInfo::new()
 ///     .protocol(ProviderInfoProtocol::Dns)
@@ -864,7 +849,7 @@ impl Provider for ProviderDns {
 /// A convinient wrapper of `ProviderAny` with default providers for IPv4
 ///
 /// # Examples
-/// ```
+/// ```no_run
 /// use gip::{Provider, ProviderDefaultV4};
 /// let mut p = ProviderDefaultV4::new();
 /// let addr = p.get_addr().unwrap();
@@ -961,21 +946,6 @@ impl Provider for ProviderDefaultV6 {
 #[cfg(test)]
 mod tests_v4 {
     use super::*;
-
-    #[test]
-    fn ipv6_test() {
-        let mut p = ProviderInfo::new()
-            .name("ipv6-test.com")
-            .ptype(ProviderInfoType::IPv4)
-            .protocol(ProviderInfoProtocol::HttpPlane)
-            .url("http://v4.ipv6-test.com/api/myip.php")
-            .create();
-        p.set_timeout(3000);
-        if let Ok(addr) = p.get_addr() {
-            assert!(addr.v4addr.is_some());
-            assert!(!addr.v4addr.unwrap().is_private());
-        }
-    }
 
     #[test]
     fn ident_me() {
@@ -1077,21 +1047,6 @@ mod tests_v4 {
 #[cfg(test)]
 mod tests_v6 {
     use super::*;
-
-    #[test]
-    fn ipv6_test() {
-        let mut p = ProviderInfo::new()
-            .ptype(ProviderInfoType::IPv6)
-            .protocol(ProviderInfoProtocol::HttpPlane)
-            .url("http://v6.ipv6-test.com/api/myip.php")
-            .create();
-        p.set_timeout(3000);
-        let addr = p.get_addr();
-        match addr {
-            Ok(x) => assert!(x.v6addr.is_some()),
-            Err(_) => (),
-        }
-    }
 
     #[test]
     fn ident_me() {

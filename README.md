@@ -45,7 +45,6 @@ OPTIONS:
 ## Providers
 Currently built-in service providers are the followings.
 
-- [ipv6-test.com](http://ipv6-test.com) ( v4 /v6 )
 - [ident.me/tnedi.me](http://api.ident.me) ( v4 / v6 )
 - [test-ipv6.com](http://test-ipv6.com) ( v4 / v6 )
 - [opendns.com](https://www.opendns.com) ( v4 / v6 )
